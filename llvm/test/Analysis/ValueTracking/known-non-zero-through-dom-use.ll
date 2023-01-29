@@ -58,9 +58,7 @@ define i1 @check_abs(i8 %x, i8 %y) {
 ; CHECK-NEXT:    br i1 [[NE]], label [[TRUE:%.*]], label [[FALSE:%.*]]
 ; CHECK:       true:
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ; CHECK:       false:
 ; CHECK-NEXT:    call void @use1(i1 [[NE]])
 ; CHECK-NEXT:    ret i1 [[NE]]
@@ -85,9 +83,7 @@ define i1 @check_bswap(i16 %x, i16 %y) {
 ; CHECK-NEXT:    [[NE:%.*]] = icmp sgt i16 [[Z]], 3
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[NE]])
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i16 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i16 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ;
   %z = call i16 @llvm.bswap.i16(i16 %x)
   %ne = icmp sgt i16 %z, 3
@@ -108,9 +104,8 @@ define i1 @check_bitreverse(i8 %x, i8 %y) {
 ; CHECK-NEXT:    call void @use1(i1 [[RT]])
 ; CHECK-NEXT:    ret i1 [[RT]]
 ; CHECK:       true:
-; CHECK-NEXT:    [[TMP1:%.*]] = add i8 [[X]], -1
-; CHECK-NEXT:    [[TMP2:%.*]] = icmp uge i8 [[TMP1]], [[Y:%.*]]
-; CHECK-NEXT:    ret i1 [[TMP2]]
+; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ;
   %z = call i8 @llvm.bitreverse.i8(i8 %x)
   %ne = icmp slt i8 %z, -4
@@ -140,9 +135,7 @@ define i1 @check_ctpop(i8 %x, i8 %y) {
 ; CHECK-NEXT:    br i1 [[NE]], label [[TRUE:%.*]], label [[FALSE:%.*]]
 ; CHECK:       true:
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ; CHECK:       false:
 ; CHECK-NEXT:    call void @use1(i1 [[NE]])
 ; CHECK-NEXT:    ret i1 [[NE]]
@@ -199,9 +192,7 @@ define i1 @check_and(i8 %x, i8 %y) {
 ; CHECK-NEXT:    br i1 [[NE_NOT]], label [[FALSE:%.*]], label [[TRUE:%.*]]
 ; CHECK:       true:
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ; CHECK:       false:
 ; CHECK-NEXT:    [[RT:%.*]] = icmp eq i8 [[X]], 0
 ; CHECK-NEXT:    call void @use1(i1 [[RT]])
@@ -237,9 +228,8 @@ define i1 @check_and_fail(i8 %x, i8 %y) {
 ; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
 ; CHECK-NEXT:    ret i1 [[R]]
 ; CHECK:       false:
-; CHECK-NEXT:    [[RT:%.*]] = icmp eq i8 [[X]], 0
-; CHECK-NEXT:    call void @use1(i1 [[RT]])
-; CHECK-NEXT:    ret i1 [[RT]]
+; CHECK-NEXT:    call void @use1(i1 false)
+; CHECK-NEXT:    ret i1 false
 ;
   %z = and i8 %x, 123
   %ne = icmp slt i8 %z, 5
@@ -299,9 +289,7 @@ define i1 @check_and_neg(i8 %x, i8 %y) {
 ; CHECK-NEXT:    ret i1 [[RT]]
 ; CHECK:       false:
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ;
   %z = and i8 %x, 123
   %z2 = sub i8 0, %z
@@ -336,9 +324,7 @@ define i1 @check_and_ctpop_neg(i8 %x, i8 %y) {
 ; CHECK-NEXT:    ret i1 [[RT]]
 ; CHECK:       false:
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ;
   %z = and i8 %x, 123
   %z2 = sub i8 0, %z
@@ -374,9 +360,7 @@ define i1 @check_and_ctpop_neg_fail(i8 %x, i8 %y) {
 ; CHECK-NEXT:    ret i1 [[RT]]
 ; CHECK:       false:
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ;
   %z = and i8 %x, 123
   %z2 = sub i8 0, %z
@@ -405,9 +389,7 @@ define i1 @check_and_ctpop_neg_bitreverse(i8 %x, i8 %y) {
 ; CHECK-NEXT:    [[NE:%.*]] = icmp ne i8 [[Z]], 0
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[NE]])
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ;
   %z = and i8 %x, 123
   %z2 = sub i8 0, %z

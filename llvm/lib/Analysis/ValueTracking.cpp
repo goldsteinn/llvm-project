@@ -2375,20 +2375,89 @@ static bool isGEPKnownNonNull(const GEPOperator *GEP, unsigned Depth,
   return false;
 }
 
-static bool isKnownNonNullFromDominatingCondition(const Value *V,
-                                                  const Instruction *CtxI,
-                                                  const DominatorTree *DT) {
-  assert(!isa<Constant>(V) && "Called for constant?");
+// Helper for `isKnownNonNullFromDominatingCondition` to actually check the
+// dominating condition.
+static bool checkDominatingConditionForNonNull(const Value *V, const User *U,
+                                               const Query &Q) {
+  const Instruction *CtxI = Q.CxtI;
+  const DominatorTree *DT = Q.DT;
 
+  // Consider only compare instructions uniquely controlling a branch
+  Value *RHS;
+  CmpInst::Predicate Pred;
+  bool NonNullIfTrue;
+  const User *CmpUse = nullptr;
+  if (match(U, m_c_ICmp(Pred, m_Specific(V), m_Value(RHS)))) {
+    CmpUse = U;
+    if (cmpExcludesZero(Pred, RHS))
+      NonNullIfTrue = true;
+    else if (cmpExcludesZero(CmpInst::getInversePredicate(Pred), RHS))
+      NonNullIfTrue = false;
+    else
+      return false;
+  } else
+    return false;
+
+  SmallVector<const User *, 4> WorkList;
+  SmallPtrSet<const User *, 4> Visited;
+  for (const auto *CmpU : CmpUse->users()) {
+
+    assert(WorkList.empty() && "Should be!");
+    if (Visited.insert(CmpU).second)
+      WorkList.push_back(CmpU);
+
+    while (!WorkList.empty()) {
+      auto *Curr = WorkList.pop_back_val();
+
+      // If a user is an AND, add all its users to the work list. We only
+      // propagate "pred != null" condition through AND because it is only
+      // correct to assume that all conditions of AND are met in true
+      // branch.
+      // TODO: Support similar logic of OR and EQ predicate?
+      if (NonNullIfTrue)
+        if (match(Curr, m_LogicalAnd(m_Value(), m_Value()))) {
+          for (const auto *CurrU : Curr->users())
+            if (Visited.insert(CurrU).second)
+              WorkList.push_back(CurrU);
+          continue;
+        }
+
+      if (const BranchInst *BI = dyn_cast<BranchInst>(Curr)) {
+        assert(BI->isConditional() && "uses a comparison!");
+
+        BasicBlock *NonNullSuccessor = BI->getSuccessor(NonNullIfTrue ? 0 : 1);
+        BasicBlockEdge Edge(BI->getParent(), NonNullSuccessor);
+        if (Edge.isSingleEdge() && DT->dominates(Edge, CtxI->getParent()))
+          return true;
+      } else if (NonNullIfTrue && isGuard(Curr) &&
+                 DT->dominates(cast<Instruction>(Curr), CtxI)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+static bool isKnownNonNullFromDominatingCondition(const Value *V,
+                                                  unsigned DomDepth,
+                                                  const Query &Q) {
+  assert(!isa<Constant>(V) && "Called for constant?");
+  const Instruction *CtxI = Q.CxtI;
+  const DominatorTree *DT = Q.DT;
   if (!CtxI || !DT)
     return false;
 
-  unsigned NumUsesExplored = 0;
+  if (DomDepth++ >= MaxAnalysisRecursionDepth)
+    return false;
+
+  // Scale down number of uses explored with depth to avoid otherwise
+  // potentially very large exponential explosition.
+  unsigned NumUsesRemaining = (DomConditionsMaxUses / DomDepth) + 1;
   for (const auto *U : V->users()) {
     // Avoid massive lists
-    if (NumUsesExplored >= DomConditionsMaxUses)
+    if (NumUsesRemaining-- == 0)
       break;
-    NumUsesExplored++;
 
     // If the value is used as an argument to a call or invoke, then argument
     // attributes may provide an answer about null-ness.
@@ -2409,56 +2478,42 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
         return true;
     }
 
-    // Consider only compare instructions uniquely controlling a branch
-    Value *RHS;
-    CmpInst::Predicate Pred;
-    if (!match(U, m_c_ICmp(Pred, m_Specific(V), m_Value(RHS))))
-      continue;
-
-    bool NonNullIfTrue;
-    if (cmpExcludesZero(Pred, RHS))
-      NonNullIfTrue = true;
-    else if (cmpExcludesZero(CmpInst::getInversePredicate(Pred), RHS))
-      NonNullIfTrue = false;
-    else
-      continue;
-
-    SmallVector<const User *, 4> WorkList;
-    SmallPtrSet<const User *, 4> Visited;
-    for (const auto *CmpU : U->users()) {
-      assert(WorkList.empty() && "Should be!");
-      if (Visited.insert(CmpU).second)
-        WorkList.push_back(CmpU);
-
-      while (!WorkList.empty()) {
-        auto *Curr = WorkList.pop_back_val();
-
-        // If a user is an AND, add all its users to the work list. We only
-        // propagate "pred != null" condition through AND because it is only
-        // correct to assume that all conditions of AND are met in true branch.
-        // TODO: Support similar logic of OR and EQ predicate?
-        if (NonNullIfTrue)
-          if (match(Curr, m_LogicalAnd(m_Value(), m_Value()))) {
-            for (const auto *CurrU : Curr->users())
-              if (Visited.insert(CurrU).second)
-                WorkList.push_back(CurrU);
-            continue;
-          }
-
-        if (const BranchInst *BI = dyn_cast<BranchInst>(Curr)) {
-          assert(BI->isConditional() && "uses a comparison!");
-
-          BasicBlock *NonNullSuccessor =
-              BI->getSuccessor(NonNullIfTrue ? 0 : 1);
-          BasicBlockEdge Edge(BI->getParent(), NonNullSuccessor);
-          if (Edge.isSingleEdge() && DT->dominates(Edge, CtxI->getParent()))
-            return true;
-        } else if (NonNullIfTrue && isGuard(Curr) &&
-                   DT->dominates(cast<Instruction>(Curr), CtxI)) {
+    bool ImpliesNonZero = false;
+    if (auto *OpU = dyn_cast<Operator>(U)) {
+      switch (OpU->getOpcode()) {
+      case Instruction::ICmp:
+        if (checkDominatingConditionForNonNull(V, U, Q))
           return true;
+        break;
+      case Instruction::And:
+        ImpliesNonZero = true;
+        break;
+      case Instruction::Sub:
+        if (auto *C = dyn_cast<Constant>(OpU->getOperand(0)))
+          ImpliesNonZero = C->isNullValue();
+        break;
+      case Instruction::Call:
+        if (auto *II = dyn_cast<IntrinsicInst>(OpU)) {
+          switch (II->getIntrinsicID()) {
+          case Intrinsic::abs:
+          case Intrinsic::bitreverse:
+          case Intrinsic::bswap:
+          case Intrinsic::ctpop:
+            ImpliesNonZero = true;
+            break;
+          default:
+            break;
+          }
         }
+        break;
+      default:
+        break;
       }
     }
+    if (ImpliesNonZero &&
+        (isKnownNonZeroFromAssume(U, Q) ||
+         isKnownNonNullFromDominatingCondition(U, DomDepth, Q)))
+      return true;
   }
 
   return false;
@@ -2671,7 +2726,7 @@ bool isKnownNonZero(const Value *V, const APInt &DemandedElts, unsigned Depth,
   }
 
   if (!isa<Constant>(V) &&
-      isKnownNonNullFromDominatingCondition(V, Q.CxtI, Q.DT))
+      isKnownNonNullFromDominatingCondition(V, /*DomDepth*/ 0, Q))
     return true;
 
   const Operator *I = dyn_cast<Operator>(V);
