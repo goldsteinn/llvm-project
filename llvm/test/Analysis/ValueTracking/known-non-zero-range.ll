@@ -12,9 +12,7 @@ define i1 @check_ucmp_range(i8 %x, i8 %y) {
 ; CHECK-NEXT:    br i1 [[NE]], label [[TRUE:%.*]], label [[FALSE:%.*]]
 ; CHECK:       true:
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ; CHECK:       false:
 ; CHECK-NEXT:    [[RT:%.*]] = icmp eq i8 [[X]], 0
 ; CHECK-NEXT:    call void @use1(i1 [[RT]])
@@ -47,9 +45,7 @@ define i1 @check_ucmp_range_from0(i8 %x, i8 %y) {
 ; CHECK-NEXT:    br i1 [[NE]], label [[TRUE:%.*]], label [[FALSE:%.*]]
 ; CHECK:       true:
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ; CHECK:       false:
 ; CHECK-NEXT:    [[RT:%.*]] = icmp eq i8 [[X]], 0
 ; CHECK-NEXT:    call void @use1(i1 [[RT]])
@@ -81,9 +77,7 @@ define i1 @check_ucmp_range_from0_assumed(i8 %x, i8 %y) {
 ; CHECK-NEXT:    [[NE:%.*]] = icmp ult i8 [[UB]], 14
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[NE]])
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ;
   %ub = add i8 %x, -1
   %ne = icmp ult i8 %ub, 14
@@ -103,9 +97,7 @@ define i1 @check_ucmp_range_and(i8 %x, i8 %y) {
 ; CHECK-NEXT:    br i1 [[NE]], label [[TRUE:%.*]], label [[FALSE:%.*]]
 ; CHECK:       true:
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ; CHECK:       false:
 ; CHECK-NEXT:    [[RT:%.*]] = icmp eq i8 [[X]], 0
 ; CHECK-NEXT:    call void @use1(i1 [[RT]])
@@ -139,9 +131,7 @@ define i1 @check_ucmp_range_from0_and_abs(i8 %x, i8 %y) {
 ; CHECK-NEXT:    [[NE:%.*]] = icmp ult i8 [[TMP1]], 14
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[NE]])
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ;
   %x1 = and i8 %x, 123
   %x2 = call i8 @llvm.abs.i8(i8 %x1, i1 true)
@@ -182,9 +172,7 @@ define i1 @check_ucmp_range_inv(i8 %x, i8 %y) {
 ; CHECK-NEXT:    br i1 [[NE]], label [[TRUE:%.*]], label [[FALSE:%.*]]
 ; CHECK:       false:
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ; CHECK:       true:
 ; CHECK-NEXT:    [[RT:%.*]] = icmp eq i8 [[X]], 0
 ; CHECK-NEXT:    call void @use1(i1 [[RT]])

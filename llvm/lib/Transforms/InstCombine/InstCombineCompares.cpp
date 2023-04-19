@@ -2891,9 +2891,13 @@ Instruction *InstCombinerImpl::foldICmpAddConstant(ICmpInst &Cmp,
 
   // (X + -1) <u C --> X <=u C (if X is never null)
   if (Pred == CmpInst::ICMP_ULT && C2->isAllOnes()) {
-    const SimplifyQuery Q = SQ.getWithInstruction(&Cmp);
-    if (llvm::isKnownNonZero(X, DL, 0, Q.AC, Q.CxtI, Q.DT))
-      return new ICmpInst(ICmpInst::ICMP_ULE, X, ConstantInt::get(Ty, C));
+    // Don't make this transform if the only use of this Cmp is assume as we
+    // both lose information and de-canonicalize the (A < C1 && A > C2) case
+    if (!Cmp.isAssumedTrue(/*OneUse*/ true)) {
+      const SimplifyQuery Q = SQ.getWithInstruction(&Cmp);
+      if (llvm::isKnownNonZero(X, DL, 0, Q.AC, Q.CxtI, Q.DT))
+        return new ICmpInst(ICmpInst::ICMP_ULE, X, ConstantInt::get(Ty, C));
+    }
   }
 
   if (!Add->hasOneUse())

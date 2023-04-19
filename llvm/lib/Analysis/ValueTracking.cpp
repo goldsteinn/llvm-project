@@ -2387,7 +2387,36 @@ static bool checkDominatingConditionForNonNull(const Value *V, const User *U,
   CmpInst::Predicate Pred;
   bool NonNullIfTrue;
   const User *CmpUse = nullptr;
-  if (match(U, m_c_ICmp(Pred, m_Specific(V), m_Value(RHS)))) {
+  const APInt *AddC;
+  if (match(U, m_Add(m_Specific(V), m_APInt(AddC))) && !AddC->isZero()) {
+    unsigned NumUsesExplored = 0;
+    for (const auto *U2 : U->users()) {
+
+      // This is inner loop of a loop through V->Users() so be more
+      // conservative here.
+      if (NumUsesExplored++ >= (DomConditionsMaxUses + 3) / 4)
+        break;
+
+      // Only handles (A + C1) u< C2, which is the canonical form of A > C3
+      // && A < C4.
+      if (match(U2, m_ICmp(Pred, m_Specific(U), m_Value(RHS)))) {
+        auto *RHSC = dyn_cast<ConstantInt>(RHS);
+        // TODO: Since we already here, we could check all (or at least more)
+        // conditions, at the moment we only handle `ICMP_ULT` to get the `A u<
+        // C1 && A u> C2` canonicalization case.
+        if (RHSC == nullptr || Pred != ICmpInst::ICMP_ULT)
+          continue;
+
+        NonNullIfTrue = RHSC->getValue().ult(*AddC);
+        if (NonNullIfTrue &&
+            dyn_cast<ICmpInst>(U2)->isAssumedTrue(/*OneUse*/ false))
+          return true;
+
+        CmpUse = U2;
+        break;
+      }
+    }
+  } else if (match(U, m_c_ICmp(Pred, m_Specific(V), m_Value(RHS)))) {
     CmpUse = U;
     if (cmpExcludesZero(Pred, RHS))
       NonNullIfTrue = true;
@@ -2395,7 +2424,9 @@ static bool checkDominatingConditionForNonNull(const Value *V, const User *U,
       NonNullIfTrue = false;
     else
       return false;
-  } else
+  }
+
+  if (CmpUse == nullptr)
     return false;
 
   SmallVector<const User *, 4> WorkList;
@@ -2481,6 +2512,7 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
     bool ImpliesNonZero = false;
     if (auto *OpU = dyn_cast<Operator>(U)) {
       switch (OpU->getOpcode()) {
+      case Instruction::Add:
       case Instruction::ICmp:
         if (checkDominatingConditionForNonNull(V, U, Q))
           return true;

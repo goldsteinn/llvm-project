@@ -26,6 +26,7 @@
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Metadata.h"
@@ -4162,6 +4163,15 @@ bool CmpInst::isEquality(Predicate P) {
   if (FCmpInst::isFPPredicate(P))
     return FCmpInst::isEquality(P);
   llvm_unreachable("Unsupported predicate kind");
+}
+
+bool CmpInst::isAssumedTrue(bool OneUse) const {
+  if (OneUse && !hasOneUse())
+    return false;
+  for (const auto *U : users())
+    if (dyn_cast<AssumeInst>(U))
+      return true;
+  return false;
 }
 
 CmpInst::Predicate CmpInst::getInversePredicate(Predicate pred) {

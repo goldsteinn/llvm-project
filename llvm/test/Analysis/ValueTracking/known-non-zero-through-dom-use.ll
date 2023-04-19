@@ -19,9 +19,7 @@ define i1 @check_neg(i8 %x, i8 %y) {
 ; CHECK-NEXT:    [[NE:%.*]] = icmp ult i8 [[NOTSUB]], -5
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[NE]])
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[Y]], 0
-; CHECK-NEXT:    [[R:%.*]] = or i1 [[CMP0]], [[CMP1]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 [[CMP0]]
 ;
   %z = sub i8 0, %x
   %ne = icmp ugt i8 %z, 4

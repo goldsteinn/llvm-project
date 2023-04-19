@@ -813,6 +813,9 @@ public:
     return P >= FIRST_ICMP_PREDICATE && P <= LAST_ICMP_PREDICATE;
   }
 
+  /// Returns if this cmp is only used by a singular assume
+  bool isAssumedTrue(bool OneUse) const;
+
   static StringRef getPredicateName(Predicate P);
 
   bool isFPPredicate() const { return isFPPredicate(getPredicate()); }
