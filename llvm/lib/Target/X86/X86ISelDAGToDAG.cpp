@@ -5638,6 +5638,27 @@ void X86DAGToDAGISel::Select(SDNode *Node) {
     SDValue N0 = Node->getOperand(0);
     SDValue N1 = Node->getOperand(1);
 
+    EVT OpVT = N0.getValueType();
+    if (OpVT.isScalarInteger() && OpVT.getScalarSizeInBits() > 8 &&
+        isa<ConstantSDNode>(N1) && !isNullConstant(N1)) {
+      const APInt &C = cast<ConstantSDNode>(N1)->getAPIntValue();
+      if (C.getSignificantBits() <= 8 &&
+          CurDAG->MaskedValueIsZero(
+              N0, APInt::getBitsSetFrom(OpVT.getScalarSizeInBits(), 8))) {
+        SDValue TruncN0 = CurDAG->getZExtOrTrunc(N0, dl, MVT::i8);
+        insertDAGNode(*CurDAG, SDValue(Node, 0), TruncN0);
+        SDValue TruncN1 = getI8Imm(C.truncSSat(8).getZExtValue(), dl);
+        insertDAGNode(*CurDAG, SDValue(Node, 0), TruncN1);
+        SDValue NewCmp =
+            CurDAG->getNode(X86ISD::CMP, dl, MVT::i32, TruncN0, TruncN1);
+        ReplaceNode(Node, NewCmp.getNode());
+        if (N1.getNode()->use_empty())
+          CurDAG->RemoveDeadNode(N1.getNode());
+        SelectCode(NewCmp.getNode());
+        return;
+      }
+    }
+
     // Optimizations for TEST compares.
     if (!isNullConstant(N1))
       break;
