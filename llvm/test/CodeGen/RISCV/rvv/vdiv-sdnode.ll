@@ -1218,13 +1218,29 @@ define <vscale x 8 x i32> @vdiv_vx_mask_nxv8i32(<vscale x 8 x i32> %va, i32 sign
 }
 
 define <vscale x 8 x i32> @vdiv_vi_mask_nxv8i32(<vscale x 8 x i32> %va, <vscale x 8 x i1> %mask) {
-; CHECK-LABEL: vdiv_vi_mask_nxv8i32:
-; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a0, zero, e32, m4, ta, ma
-; CHECK-NEXT:    vmv.v.i v12, 1
-; CHECK-NEXT:    vmerge.vim v12, v12, 7, v0
-; CHECK-NEXT:    vdiv.vv v8, v8, v12
-; CHECK-NEXT:    ret
+; RV32-LABEL: vdiv_vi_mask_nxv8i32:
+; RV32:       # %bb.0:
+; RV32-NEXT:    lui a0, 599186
+; RV32-NEXT:    addi a0, a0, 1171
+; RV32-NEXT:    vsetvli a1, zero, e32, m4, ta, mu
+; RV32-NEXT:    vmulh.vx v12, v8, a0
+; RV32-NEXT:    vadd.vv v12, v12, v8
+; RV32-NEXT:    vsrl.vi v16, v12, 31
+; RV32-NEXT:    vsra.vi v12, v12, 2
+; RV32-NEXT:    vadd.vv v8, v12, v16, v0.t
+; RV32-NEXT:    ret
+;
+; RV64-LABEL: vdiv_vi_mask_nxv8i32:
+; RV64:       # %bb.0:
+; RV64-NEXT:    lui a0, 599186
+; RV64-NEXT:    addiw a0, a0, 1171
+; RV64-NEXT:    vsetvli a1, zero, e32, m4, ta, mu
+; RV64-NEXT:    vmulh.vx v12, v8, a0
+; RV64-NEXT:    vadd.vv v12, v12, v8
+; RV64-NEXT:    vsra.vi v12, v12, 2
+; RV64-NEXT:    vsrl.vi v16, v12, 31
+; RV64-NEXT:    vadd.vv v8, v12, v16, v0.t
+; RV64-NEXT:    ret
   %head1 = insertelement <vscale x 8 x i32> poison, i32 1, i32 0
   %one = shufflevector <vscale x 8 x i32> %head1, <vscale x 8 x i32> poison, <vscale x 8 x i32> zeroinitializer
   %head2 = insertelement <vscale x 8 x i32> poison, i32 7, i32 0
