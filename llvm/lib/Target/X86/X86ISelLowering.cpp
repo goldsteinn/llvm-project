@@ -35758,12 +35758,12 @@ bool X86TargetLowering::shouldFoldSelectWithIdentityConstant(unsigned Opcode,
                                                              EVT VT) const {
   // TODO: This is too general. There are cases where pre-AVX512 codegen would
   //       benefit. The transform may also be profitable for scalar code.
-  if (!Subtarget.hasAVX512())
-    return false;
-  if (!Subtarget.hasVLX() && !VT.is512BitVector())
-    return false;
-  if (!VT.isVector() || VT.getScalarType() == MVT::i1)
-    return false;
+  if (VT.isVector()) {
+    if (!Subtarget.hasAVX512())
+      return false;
+    if (!Subtarget.hasVLX() && !VT.is512BitVector())
+      return false;
+  }
 
   return true;
 }

@@ -2381,7 +2381,8 @@ static SDValue foldSelectWithIdentityConstant(SDNode *N, SelectionDAG &DAG,
     std::swap(N0, N1);
 
   // TODO: Should this apply to scalar select too?
-  if (N1.getOpcode() != ISD::VSELECT || !N1.hasOneUse())
+  if (N1.getOpcode() != ISD::VSELECT && N1.getOpcode() != ISD::SELECT) ||
+      !N1.hasOneUse())
     return SDValue();
 
   // We can't hoist div/rem because of immediate UB (not speculatable).
