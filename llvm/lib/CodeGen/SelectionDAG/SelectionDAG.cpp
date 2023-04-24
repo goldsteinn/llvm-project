@@ -11003,8 +11003,12 @@ bool llvm::isNeutralConstant(unsigned Opcode, SDNodeFlags Flags, SDValue V,
     case ISD::SRA:
     case ISD::SRL:
       return OperandNo == 1 && Const->isZero();
-    case ISD::UDIV:
     case ISD::SDIV:
+    case ISD::SREM:
+    case ISD::SDIVREM:
+    case ISD::UDIV:
+    case ISD::UREM:
+    case ISD::UDIVREM:
       return OperandNo == 1 && Const->isOne();
     }
   } else if (auto *ConstFP = isConstOrConstSplatFP(V)) {
