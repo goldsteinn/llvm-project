@@ -134,11 +134,11 @@ define fp128 @TestI128_1(fp128 %x) #0 {
 ; SSE-NEXT:    andps {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm0
 ; SSE-NEXT:    movaps {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm1
 ; SSE-NEXT:    callq __lttf2@PLT
-; SSE-NEXT:    xorl %ecx, %ecx
+; SSE-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %ecx
+; SSE-NEXT:    leaq 16(%rcx), %rdx
 ; SSE-NEXT:    testl %eax, %eax
-; SSE-NEXT:    sets %cl
-; SSE-NEXT:    shlq $4, %rcx
-; SSE-NEXT:    movaps {{\.?LCPI[0-9]+_[0-9]+}}(%rcx), %xmm0
+; SSE-NEXT:    cmovnsq %rcx, %rdx
+; SSE-NEXT:    movaps (%rdx), %xmm0
 ; SSE-NEXT:    popq %rax
 ; SSE-NEXT:    retq
 ;
@@ -148,11 +148,11 @@ define fp128 @TestI128_1(fp128 %x) #0 {
 ; AVX-NEXT:    vandps {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm0, %xmm0
 ; AVX-NEXT:    vmovaps {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm1
 ; AVX-NEXT:    callq __lttf2@PLT
-; AVX-NEXT:    xorl %ecx, %ecx
+; AVX-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %ecx
+; AVX-NEXT:    leaq 16(%rcx), %rdx
 ; AVX-NEXT:    testl %eax, %eax
-; AVX-NEXT:    sets %cl
-; AVX-NEXT:    shlq $4, %rcx
-; AVX-NEXT:    vmovaps {{\.?LCPI[0-9]+_[0-9]+}}(%rcx), %xmm0
+; AVX-NEXT:    cmovnsq %rcx, %rdx
+; AVX-NEXT:    vmovaps (%rdx), %xmm0
 ; AVX-NEXT:    popq %rax
 ; AVX-NEXT:    retq
 entry:

@@ -7,6 +7,8 @@
 define double @c() nounwind {
 ; CHECK-LABEL: c:
 ; CHECK:       ## %bb.0: ## %entry
+; CHECK-NEXT:    pushl %ebx
+; CHECK-NEXT:    pushl %edi
 ; CHECK-NEXT:    pushl %esi
 ; CHECK-NEXT:    subl $16, %esp
 ; CHECK-NEXT:    movl _b, %eax
@@ -14,14 +16,16 @@ define double @c() nounwind {
 ; CHECK-NEXT:    sarl $31, %ecx
 ; CHECK-NEXT:    movl _a+4, %edx
 ; CHECK-NEXT:    movl _a, %esi
+; CHECK-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %edi
+; CHECK-NEXT:    leal 4(%edi), %ebx
 ; CHECK-NEXT:    subl %eax, %esi
 ; CHECK-NEXT:    sbbl %ecx, %edx
 ; CHECK-NEXT:    setb %al
+; CHECK-NEXT:    cmovnsl %edi, %ebx
 ; CHECK-NEXT:    movl %esi, (%esp)
 ; CHECK-NEXT:    movl %edx, {{[0-9]+}}(%esp)
-; CHECK-NEXT:    shrl $31, %edx
 ; CHECK-NEXT:    fildll (%esp)
-; CHECK-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%edx,4)
+; CHECK-NEXT:    fadds (%ebx)
 ; CHECK-NEXT:    fstpl {{[0-9]+}}(%esp)
 ; CHECK-NEXT:    fldl {{[0-9]+}}(%esp)
 ; CHECK-NEXT:    fldz
@@ -31,6 +35,8 @@ define double @c() nounwind {
 ; CHECK-NEXT:    fstp %st(1)
 ; CHECK-NEXT:    addl $16, %esp
 ; CHECK-NEXT:    popl %esi
+; CHECK-NEXT:    popl %edi
+; CHECK-NEXT:    popl %ebx
 ; CHECK-NEXT:    retl
 entry:
   %0 = load i32, ptr @b, align 4

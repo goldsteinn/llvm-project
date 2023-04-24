@@ -189,11 +189,9 @@ define void @test9(i64 %p, i64 %s) {
 ; CHECK-LABEL: test9:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    leaq (%rsi,%rdi), %rax
-; CHECK-NEXT:    xorl %ecx, %ecx
+; CHECK-NEXT:    leaq 4096(%rax), %rcx
 ; CHECK-NEXT:    testl $4095, %eax # imm = 0xFFF
-; CHECK-NEXT:    setne %cl
-; CHECK-NEXT:    shlq $12, %rcx
-; CHECK-NEXT:    addq %rax, %rcx
+; CHECK-NEXT:    cmoveq %rax, %rcx
 ; CHECK-NEXT:    andq $-4096, %rcx # imm = 0xF000
 ; CHECK-NEXT:    addq %rcx, %rdi
 ; CHECK-NEXT:    jmp bar@PLT # TAILCALL
@@ -212,21 +210,20 @@ entry:
 define void @test10() {
 ; CHECK-LABEL: test10:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    movl (%rax), %eax
-; CHECK-NEXT:    movzwl (%rax), %ecx
-; CHECK-NEXT:    leal (%rcx,%rcx,2), %esi
-; CHECK-NEXT:    movl %ecx, %edi
-; CHECK-NEXT:    subl %ecx, %edi
-; CHECK-NEXT:    subl %ecx, %edi
+; CHECK-NEXT:    movl (%rax), %ecx
+; CHECK-NEXT:    movzwl (%rax), %eax
+; CHECK-NEXT:    leal (%rax,%rax), %edx
+; CHECK-NEXT:    leal (%rax,%rax,2), %esi
+; CHECK-NEXT:    # kill: def $eax killed $eax killed $rax
+; CHECK-NEXT:    subl %edx, %eax
 ; CHECK-NEXT:    negl %esi
-; CHECK-NEXT:    xorl %ecx, %ecx
-; CHECK-NEXT:    cmpl $4, %eax
-; CHECK-NEXT:    movl %edi, (%rax)
+; CHECK-NEXT:    movl %esi, %edx
+; CHECK-NEXT:    sarl %cl, %edx
+; CHECK-NEXT:    cmpl $4, %ecx
+; CHECK-NEXT:    movl %eax, (%rax)
 ; CHECK-NEXT:    movl %esi, (%rax)
-; CHECK-NEXT:    cmovnel %eax, %ecx
-; CHECK-NEXT:    # kill: def $cl killed $cl killed $ecx
-; CHECK-NEXT:    sarl %cl, %esi
-; CHECK-NEXT:    movl %esi, (%rax)
+; CHECK-NEXT:    cmovel %esi, %edx
+; CHECK-NEXT:    movl %edx, (%rax)
 ; CHECK-NEXT:    retq
 entry:
   %tmp = load i32, ptr undef, align 4

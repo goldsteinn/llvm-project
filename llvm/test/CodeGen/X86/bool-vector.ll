@@ -62,50 +62,46 @@ entry:
 define i32 @PR15215_good(<4 x i32> %input) {
 ; X86-LABEL: PR15215_good:
 ; X86:       # %bb.0: # %entry
-; X86-NEXT:    pushl %esi
-; X86-NEXT:    .cfi_def_cfa_offset 8
-; X86-NEXT:    .cfi_offset %esi, -8
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
-; X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; X86-NEXT:    movl {{[0-9]+}}(%esp), %edx
-; X86-NEXT:    movl {{[0-9]+}}(%esp), %esi
-; X86-NEXT:    andl $1, %esi
-; X86-NEXT:    andl $1, %edx
-; X86-NEXT:    andl $1, %ecx
 ; X86-NEXT:    andl $1, %eax
-; X86-NEXT:    leal (%esi,%edx,2), %edx
-; X86-NEXT:    leal (%edx,%ecx,4), %ecx
-; X86-NEXT:    leal (%ecx,%eax,8), %eax
-; X86-NEXT:    popl %esi
-; X86-NEXT:    .cfi_def_cfa_offset 4
+; X86-NEXT:    testb $1, {{[0-9]+}}(%esp)
+; X86-NEXT:    jne .LBB1_1
+; X86-NEXT:  # %bb.2: # %entry
+; X86-NEXT:    testb $1, {{[0-9]+}}(%esp)
+; X86-NEXT:    jne .LBB1_3
+; X86-NEXT:  .LBB1_4: # %entry
+; X86-NEXT:    testb $1, {{[0-9]+}}(%esp)
+; X86-NEXT:    jne .LBB1_5
+; X86-NEXT:  .LBB1_6: # %entry
+; X86-NEXT:    retl
+; X86-NEXT:  .LBB1_1:
+; X86-NEXT:    orl $2, %eax
+; X86-NEXT:    testb $1, {{[0-9]+}}(%esp)
+; X86-NEXT:    je .LBB1_4
+; X86-NEXT:  .LBB1_3:
+; X86-NEXT:    orl $4, %eax
+; X86-NEXT:    testb $1, {{[0-9]+}}(%esp)
+; X86-NEXT:    je .LBB1_6
+; X86-NEXT:  .LBB1_5:
+; X86-NEXT:    orl $8, %eax
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: PR15215_good:
 ; X64:       # %bb.0: # %entry
-; X64-NEXT:    # kill: def $ecx killed $ecx def $rcx
-; X64-NEXT:    # kill: def $edx killed $edx def $rdx
-; X64-NEXT:    # kill: def $esi killed $esi def $rsi
 ; X64-NEXT:    # kill: def $edi killed $edi def $rdi
 ; X64-NEXT:    andl $1, %edi
-; X64-NEXT:    andl $1, %esi
-; X64-NEXT:    andl $1, %edx
-; X64-NEXT:    andl $1, %ecx
-; X64-NEXT:    leal (%rdi,%rsi,2), %eax
-; X64-NEXT:    leal (%rax,%rdx,4), %eax
-; X64-NEXT:    leal (%rax,%rcx,8), %eax
+; X64-NEXT:    leal 2(%rdi), %eax
+; X64-NEXT:    testb $1, %sil
+; X64-NEXT:    cmovel %edi, %eax
+; X64-NEXT:    movl %eax, %esi
+; X64-NEXT:    orl $4, %esi
+; X64-NEXT:    testb $1, %dl
+; X64-NEXT:    cmovel %eax, %esi
+; X64-NEXT:    movl %esi, %eax
+; X64-NEXT:    orl $8, %eax
+; X64-NEXT:    testb $1, %cl
+; X64-NEXT:    cmovel %esi, %eax
 ; X64-NEXT:    retq
-;
-; SSE2-LABEL: PR15215_good:
-; SSE2:       # %bb.0: # %entry
-; SSE2-NEXT:    pslld $31, %xmm0
-; SSE2-NEXT:    movmskps %xmm0, %eax
-; SSE2-NEXT:    ret{{[l|q]}}
-;
-; AVX2-LABEL: PR15215_good:
-; AVX2:       # %bb.0: # %entry
-; AVX2-NEXT:    vpslld $31, %xmm0, %xmm0
-; AVX2-NEXT:    vmovmskps %xmm0, %eax
-; AVX2-NEXT:    ret{{[l|q]}}
 entry:
   %0 = trunc <4 x i32> %input to <4 x i1>
   %1 = extractelement <4 x i1> %0, i32 0

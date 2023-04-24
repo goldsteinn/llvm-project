@@ -7,24 +7,35 @@ define void @test_convert_float2_ulong2(ptr nocapture %src, ptr nocapture %dest)
 ; CHECK-NEXT:    pushl %edi
 ; CHECK-NEXT:    pushl %esi
 ; CHECK-NEXT:    subl $20, %esp
-; CHECK-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; CHECK-NEXT:    movl {{[0-9]+}}(%esp), %ecx
 ; CHECK-NEXT:    movl 168(%ecx), %edx
-; CHECK-NEXT:    movl 172(%ecx), %esi
-; CHECK-NEXT:    movl 160(%ecx), %edi
-; CHECK-NEXT:    movl 164(%ecx), %ecx
-; CHECK-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
-; CHECK-NEXT:    movl %edi, (%esp)
-; CHECK-NEXT:    movl %esi, {{[0-9]+}}(%esp)
+; CHECK-NEXT:    movl 172(%ecx), %eax
+; CHECK-NEXT:    movl 160(%ecx), %esi
+; CHECK-NEXT:    movl 164(%ecx), %edi
+; CHECK-NEXT:    movl %edi, {{[0-9]+}}(%esp)
+; CHECK-NEXT:    movl %esi, (%esp)
+; CHECK-NEXT:    movl %eax, {{[0-9]+}}(%esp)
 ; CHECK-NEXT:    movl %edx, {{[0-9]+}}(%esp)
-; CHECK-NEXT:    shrl $31, %ecx
+; CHECK-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %ecx
+; CHECK-NEXT:    addl $4, %ecx
+; CHECK-NEXT:    testl %edi, %edi
+; CHECK-NEXT:    movl %ecx, %esi
+; CHECK-NEXT:    js .LBB0_2
+; CHECK-NEXT:  # %bb.1:
+; CHECK-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %esi
+; CHECK-NEXT:  .LBB0_2:
+; CHECK-NEXT:    movl {{[0-9]+}}(%esp), %edx
 ; CHECK-NEXT:    fildll (%esp)
-; CHECK-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%ecx,4)
-; CHECK-NEXT:    shrl $31, %esi
+; CHECK-NEXT:    fadds (%esi)
+; CHECK-NEXT:    testl %eax, %eax
+; CHECK-NEXT:    js .LBB0_4
+; CHECK-NEXT:  # %bb.3:
+; CHECK-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %ecx
+; CHECK-NEXT:  .LBB0_4:
 ; CHECK-NEXT:    fildll {{[0-9]+}}(%esp)
-; CHECK-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%esi,4)
-; CHECK-NEXT:    fstps 84(%eax)
-; CHECK-NEXT:    fstps 80(%eax)
+; CHECK-NEXT:    fadds (%ecx)
+; CHECK-NEXT:    fstps 84(%edx)
+; CHECK-NEXT:    fstps 80(%edx)
 ; CHECK-NEXT:    addl $20, %esp
 ; CHECK-NEXT:    popl %esi
 ; CHECK-NEXT:    popl %edi

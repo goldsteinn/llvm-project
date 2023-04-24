@@ -59,11 +59,11 @@ define i16 @select_consts_i16(i16 %offset, i1 %b) {
 define i8 @select_consts_i8(i8 %offset, i1 %b) {
 ; CHECK-LABEL: select_consts_i8:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    xorl %ecx, %ecx
+; CHECK-NEXT:    # kill: def $edi killed $edi def $rdi
+; CHECK-NEXT:    leal 45(%rdi), %eax
+; CHECK-NEXT:    movzbl %al, %eax
 ; CHECK-NEXT:    testb $1, %sil
-; CHECK-NEXT:    movl $45, %eax
-; CHECK-NEXT:    cmovnel %ecx, %eax
-; CHECK-NEXT:    addb %dil, %al
+; CHECK-NEXT:    cmovnel %edi, %eax
 ; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    retq
   %s = select i1 %b, i8 0, i8 45
@@ -109,9 +109,10 @@ define i32 @select_40_43_i32(i32 %offset, i64 %x) {
 define i32 @select_0_1_i32(i32 %offset, i64 %x) {
 ; CHECK-LABEL: select_0_1_i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    movl %edi, %eax
+; CHECK-NEXT:    # kill: def $edi killed $edi def $rdi
+; CHECK-NEXT:    leal 1(%rdi), %eax
 ; CHECK-NEXT:    cmpq $42, %rsi
-; CHECK-NEXT:    adcl $0, %eax
+; CHECK-NEXT:    cmovael %edi, %eax
 ; CHECK-NEXT:    retq
   %b = icmp ugt i64 %x, 41
   %s = select i1 %b, i32 0, i32 1
@@ -122,9 +123,10 @@ define i32 @select_0_1_i32(i32 %offset, i64 %x) {
 define i32 @select_1_0_i32(i32 %offset, i64 %x) {
 ; CHECK-LABEL: select_1_0_i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    movl %edi, %eax
+; CHECK-NEXT:    # kill: def $edi killed $edi def $rdi
+; CHECK-NEXT:    leal 1(%rdi), %eax
 ; CHECK-NEXT:    cmpq $42, %rsi
-; CHECK-NEXT:    sbbl $-1, %eax
+; CHECK-NEXT:    cmovbl %edi, %eax
 ; CHECK-NEXT:    retq
   %b = icmp ugt i64 %x, 41
   %s = select i1 %b, i32 1, i32 0

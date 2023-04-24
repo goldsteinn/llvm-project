@@ -170,9 +170,11 @@ define double @fsel_nonzero_true_val(double %x, double %y, double %z) {
 define double @fsel_nonzero_constants(double %x, double %y) {
 ; SSE-LABEL: fsel_nonzero_constants:
 ; SSE:       # %bb.0:
-; SSE-NEXT:    cmpeqsd %xmm1, %xmm0
-; SSE-NEXT:    movq %xmm0, %rax
-; SSE-NEXT:    andl $1, %eax
+; SSE-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; SSE-NEXT:    leaq 8(%rax), %rcx
+; SSE-NEXT:    ucomisd %xmm1, %xmm0
+; SSE-NEXT:    cmovneq %rax, %rcx
+; SSE-NEXT:    cmovpq %rax, %rcx
 ; SSE-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
 ; SSE-NEXT:    retq
 ;

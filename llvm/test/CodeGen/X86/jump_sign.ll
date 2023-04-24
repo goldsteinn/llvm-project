@@ -308,12 +308,11 @@ define i32 @func_p(i32 %a, i32 %b) nounwind {
 define i32 @func_q(i32 %a0, i32 %a1, i32 %a2) {
 ; CHECK-LABEL: func_q:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    movl {{[0-9]+}}(%esp), %eax
-; CHECK-NEXT:    xorl %ecx, %ecx
-; CHECK-NEXT:    subl {{[0-9]+}}(%esp), %eax
-; CHECK-NEXT:    sbbl %ecx, %ecx
-; CHECK-NEXT:    negl %eax
-; CHECK-NEXT:    xorl %ecx, %eax
+; CHECK-NEXT:    movl {{[0-9]+}}(%esp), %ecx
+; CHECK-NEXT:    subl {{[0-9]+}}(%esp), %ecx
+; CHECK-NEXT:    movl %ecx, %eax
+; CHECK-NEXT:    notl %eax
+; CHECK-NEXT:    cmovbel %ecx, %eax
 ; CHECK-NEXT:    retl
   %t1 = icmp ult i32 %a0, %a1
   %t2 = sub i32 %a1, %a0

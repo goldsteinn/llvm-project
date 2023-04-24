@@ -262,9 +262,12 @@ define void @test_i1_uge(ptr%A2) {
 define i64 @PR40657(i8 %var2, i8 %var9) {
 ; CHECK-LABEL: PR40657:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    addb %sil, %dil
-; CHECK-NEXT:    incb %dil
-; CHECK-NEXT:    movzbl %dil, %eax
+; CHECK-NEXT:    # kill: def $edi killed $edi def $rdi
+; CHECK-NEXT:    incb %sil
+; CHECK-NEXT:    leal 1(%rdi), %eax
+; CHECK-NEXT:    movzbl %al, %eax
+; CHECK-NEXT:    testb $1, %sil
+; CHECK-NEXT:    cmovel %edi, %eax
 ; CHECK-NEXT:    andl $1, %eax
 ; CHECK-NEXT:    retq
   %var6 = trunc i8 %var9 to i1

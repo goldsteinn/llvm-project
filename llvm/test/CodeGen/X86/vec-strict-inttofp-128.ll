@@ -274,18 +274,23 @@ define <2 x float> @uitofp_v2i64_v2f32(<2 x i64> %x) #0 {
 ; SSE-32-NEXT:    pshufd {{.*#+}} xmm1 = xmm0[2,3,2,3]
 ; SSE-32-NEXT:    movq %xmm1, {{[0-9]+}}(%esp)
 ; SSE-32-NEXT:    movq %xmm0, {{[0-9]+}}(%esp)
+; SSE-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; SSE-32-NEXT:    leal 4(%eax), %ecx
 ; SSE-32-NEXT:    pshufd {{.*#+}} xmm1 = xmm0[3,3,3,3]
-; SSE-32-NEXT:    movd %xmm1, %eax
-; SSE-32-NEXT:    shrl $31, %eax
+; SSE-32-NEXT:    movd %xmm1, %edx
+; SSE-32-NEXT:    testl %edx, %edx
+; SSE-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %edx
+; SSE-32-NEXT:    cmovsl %ecx, %edx
 ; SSE-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; SSE-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; SSE-32-NEXT:    fadds (%edx)
 ; SSE-32-NEXT:    fstps (%esp)
 ; SSE-32-NEXT:    wait
 ; SSE-32-NEXT:    pshufd {{.*#+}} xmm0 = xmm0[1,1,1,1]
-; SSE-32-NEXT:    movd %xmm0, %eax
-; SSE-32-NEXT:    shrl $31, %eax
+; SSE-32-NEXT:    movd %xmm0, %edx
+; SSE-32-NEXT:    testl %edx, %edx
+; SSE-32-NEXT:    cmovsl %ecx, %eax
 ; SSE-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; SSE-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; SSE-32-NEXT:    fadds (%eax)
 ; SSE-32-NEXT:    fstps {{[0-9]+}}(%esp)
 ; SSE-32-NEXT:    wait
 ; SSE-32-NEXT:    movss {{.*#+}} xmm1 = mem[0],zero,zero,zero
@@ -343,18 +348,23 @@ define <2 x float> @uitofp_v2i64_v2f32(<2 x i64> %x) #0 {
 ; SSE41-32-NEXT:    pshufd {{.*#+}} xmm1 = xmm0[2,3,2,3]
 ; SSE41-32-NEXT:    movq %xmm1, {{[0-9]+}}(%esp)
 ; SSE41-32-NEXT:    movq %xmm0, {{[0-9]+}}(%esp)
+; SSE41-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; SSE41-32-NEXT:    leal 4(%eax), %ecx
 ; SSE41-32-NEXT:    pshufd {{.*#+}} xmm1 = xmm0[3,3,3,3]
-; SSE41-32-NEXT:    movd %xmm1, %eax
-; SSE41-32-NEXT:    shrl $31, %eax
+; SSE41-32-NEXT:    movd %xmm1, %edx
+; SSE41-32-NEXT:    testl %edx, %edx
+; SSE41-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %edx
+; SSE41-32-NEXT:    cmovsl %ecx, %edx
 ; SSE41-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; SSE41-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; SSE41-32-NEXT:    fadds (%edx)
 ; SSE41-32-NEXT:    fstps (%esp)
 ; SSE41-32-NEXT:    wait
 ; SSE41-32-NEXT:    pshufd {{.*#+}} xmm0 = xmm0[1,1,1,1]
-; SSE41-32-NEXT:    movd %xmm0, %eax
-; SSE41-32-NEXT:    shrl $31, %eax
+; SSE41-32-NEXT:    movd %xmm0, %edx
+; SSE41-32-NEXT:    testl %edx, %edx
+; SSE41-32-NEXT:    cmovsl %ecx, %eax
 ; SSE41-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; SSE41-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; SSE41-32-NEXT:    fadds (%eax)
 ; SSE41-32-NEXT:    fstps {{[0-9]+}}(%esp)
 ; SSE41-32-NEXT:    wait
 ; SSE41-32-NEXT:    movss {{.*#+}} xmm1 = mem[0],zero,zero,zero
@@ -412,16 +422,21 @@ define <2 x float> @uitofp_v2i64_v2f32(<2 x i64> %x) #0 {
 ; AVX-32-NEXT:    vmovlps %xmm0, {{[0-9]+}}(%esp)
 ; AVX-32-NEXT:    vshufps {{.*#+}} xmm1 = xmm0[2,3,2,3]
 ; AVX-32-NEXT:    vmovlps %xmm1, {{[0-9]+}}(%esp)
-; AVX-32-NEXT:    vextractps $1, %xmm0, %eax
-; AVX-32-NEXT:    shrl $31, %eax
+; AVX-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; AVX-32-NEXT:    leal 4(%eax), %ecx
+; AVX-32-NEXT:    vextractps $1, %xmm0, %edx
+; AVX-32-NEXT:    testl %edx, %edx
+; AVX-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %edx
+; AVX-32-NEXT:    cmovsl %ecx, %edx
 ; AVX-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; AVX-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; AVX-32-NEXT:    fadds (%edx)
 ; AVX-32-NEXT:    fstps {{[0-9]+}}(%esp)
 ; AVX-32-NEXT:    wait
-; AVX-32-NEXT:    vextractps $3, %xmm0, %eax
-; AVX-32-NEXT:    shrl $31, %eax
+; AVX-32-NEXT:    vextractps $3, %xmm0, %edx
+; AVX-32-NEXT:    testl %edx, %edx
+; AVX-32-NEXT:    cmovsl %ecx, %eax
 ; AVX-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; AVX-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; AVX-32-NEXT:    fadds (%eax)
 ; AVX-32-NEXT:    fstps (%esp)
 ; AVX-32-NEXT:    wait
 ; AVX-32-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
@@ -1272,18 +1287,23 @@ define <2 x double> @uitofp_v2i64_v2f64(<2 x i64> %x) #0 {
 ; SSE-32-NEXT:    movq %xmm0, {{[0-9]+}}(%esp)
 ; SSE-32-NEXT:    pshufd {{.*#+}} xmm1 = xmm0[2,3,2,3]
 ; SSE-32-NEXT:    movq %xmm1, {{[0-9]+}}(%esp)
+; SSE-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; SSE-32-NEXT:    leal 4(%eax), %ecx
 ; SSE-32-NEXT:    pshufd {{.*#+}} xmm1 = xmm0[1,1,1,1]
-; SSE-32-NEXT:    movd %xmm1, %eax
-; SSE-32-NEXT:    shrl $31, %eax
+; SSE-32-NEXT:    movd %xmm1, %edx
+; SSE-32-NEXT:    testl %edx, %edx
+; SSE-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %edx
+; SSE-32-NEXT:    cmovsl %ecx, %edx
 ; SSE-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; SSE-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; SSE-32-NEXT:    fadds (%edx)
 ; SSE-32-NEXT:    fstpl {{[0-9]+}}(%esp)
 ; SSE-32-NEXT:    wait
 ; SSE-32-NEXT:    pshufd {{.*#+}} xmm0 = xmm0[3,3,3,3]
-; SSE-32-NEXT:    movd %xmm0, %eax
-; SSE-32-NEXT:    shrl $31, %eax
+; SSE-32-NEXT:    movd %xmm0, %edx
+; SSE-32-NEXT:    testl %edx, %edx
+; SSE-32-NEXT:    cmovsl %ecx, %eax
 ; SSE-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; SSE-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; SSE-32-NEXT:    fadds (%eax)
 ; SSE-32-NEXT:    fstpl (%esp)
 ; SSE-32-NEXT:    wait
 ; SSE-32-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
@@ -1340,18 +1360,23 @@ define <2 x double> @uitofp_v2i64_v2f64(<2 x i64> %x) #0 {
 ; SSE41-32-NEXT:    movq %xmm0, {{[0-9]+}}(%esp)
 ; SSE41-32-NEXT:    pshufd {{.*#+}} xmm1 = xmm0[2,3,2,3]
 ; SSE41-32-NEXT:    movq %xmm1, {{[0-9]+}}(%esp)
+; SSE41-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; SSE41-32-NEXT:    leal 4(%eax), %ecx
 ; SSE41-32-NEXT:    pshufd {{.*#+}} xmm1 = xmm0[1,1,1,1]
-; SSE41-32-NEXT:    movd %xmm1, %eax
-; SSE41-32-NEXT:    shrl $31, %eax
+; SSE41-32-NEXT:    movd %xmm1, %edx
+; SSE41-32-NEXT:    testl %edx, %edx
+; SSE41-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %edx
+; SSE41-32-NEXT:    cmovsl %ecx, %edx
 ; SSE41-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; SSE41-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; SSE41-32-NEXT:    fadds (%edx)
 ; SSE41-32-NEXT:    fstpl {{[0-9]+}}(%esp)
 ; SSE41-32-NEXT:    wait
 ; SSE41-32-NEXT:    pshufd {{.*#+}} xmm0 = xmm0[3,3,3,3]
-; SSE41-32-NEXT:    movd %xmm0, %eax
-; SSE41-32-NEXT:    shrl $31, %eax
+; SSE41-32-NEXT:    movd %xmm0, %edx
+; SSE41-32-NEXT:    testl %edx, %edx
+; SSE41-32-NEXT:    cmovsl %ecx, %eax
 ; SSE41-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; SSE41-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; SSE41-32-NEXT:    fadds (%eax)
 ; SSE41-32-NEXT:    fstpl (%esp)
 ; SSE41-32-NEXT:    wait
 ; SSE41-32-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
@@ -1408,16 +1433,21 @@ define <2 x double> @uitofp_v2i64_v2f64(<2 x i64> %x) #0 {
 ; AVX-32-NEXT:    vmovlps %xmm0, {{[0-9]+}}(%esp)
 ; AVX-32-NEXT:    vshufps {{.*#+}} xmm1 = xmm0[2,3,2,3]
 ; AVX-32-NEXT:    vmovlps %xmm1, {{[0-9]+}}(%esp)
-; AVX-32-NEXT:    vextractps $1, %xmm0, %eax
-; AVX-32-NEXT:    shrl $31, %eax
+; AVX-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; AVX-32-NEXT:    leal 4(%eax), %ecx
+; AVX-32-NEXT:    vextractps $1, %xmm0, %edx
+; AVX-32-NEXT:    testl %edx, %edx
+; AVX-32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %edx
+; AVX-32-NEXT:    cmovsl %ecx, %edx
 ; AVX-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; AVX-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; AVX-32-NEXT:    fadds (%edx)
 ; AVX-32-NEXT:    fstpl {{[0-9]+}}(%esp)
 ; AVX-32-NEXT:    wait
-; AVX-32-NEXT:    vextractps $3, %xmm0, %eax
-; AVX-32-NEXT:    shrl $31, %eax
+; AVX-32-NEXT:    vextractps $3, %xmm0, %edx
+; AVX-32-NEXT:    testl %edx, %edx
+; AVX-32-NEXT:    cmovsl %ecx, %eax
 ; AVX-32-NEXT:    fildll {{[0-9]+}}(%esp)
-; AVX-32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; AVX-32-NEXT:    fadds (%eax)
 ; AVX-32-NEXT:    fstpl (%esp)
 ; AVX-32-NEXT:    wait
 ; AVX-32-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero

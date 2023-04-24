@@ -34,9 +34,14 @@ define fastcc double @uint64_to_fp(i64 %X) {
 ; CHECK-NEXT:    subl $16, %esp
 ; CHECK-NEXT:    movl %edx, {{[0-9]+}}(%esp)
 ; CHECK-NEXT:    movl %ecx, (%esp)
-; CHECK-NEXT:    shrl $31, %edx
+; CHECK-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; CHECK-NEXT:    testl %edx, %edx
+; CHECK-NEXT:    jns .LBB1_2
+; CHECK-NEXT:  # %bb.1:
+; CHECK-NEXT:    addl $4, %eax
+; CHECK-NEXT:  .LBB1_2:
 ; CHECK-NEXT:    fildll (%esp)
-; CHECK-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%edx,4)
+; CHECK-NEXT:    fadds (%eax)
 ; CHECK-NEXT:    fstpl {{[0-9]+}}(%esp)
 ; CHECK-NEXT:    fldl {{[0-9]+}}(%esp)
 ; CHECK-NEXT:    movl %ebp, %esp

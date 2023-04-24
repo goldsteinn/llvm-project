@@ -10,17 +10,17 @@ define void @g(ptr %x, ptr %y, ptr %z) {
 ; CHECK-NEXT:    movl a(%rip), %eax
 ; CHECK-NEXT:    #APP
 ; CHECK-NEXT:    #NO_APP
-; CHECK-NEXT:    xorl %ecx, %ecx
+; CHECK-NEXT:    movl (%rdi), %ecx
+; CHECK-NEXT:    movl %ecx, %edi
+; CHECK-NEXT:    orl $2, %edi
 ; CHECK-NEXT:    testl %eax, %eax
-; CHECK-NEXT:    sete %cl
-; CHECK-NEXT:    addl %ecx, %ecx
-; CHECK-NEXT:    orl (%rdi), %ecx
+; CHECK-NEXT:    cmovnel %ecx, %edi
 ; CHECK-NEXT:    movl $0, (%rsi)
 ; CHECK-NEXT:    #APP
 ; CHECK-NEXT:    #NO_APP
 ; CHECK-NEXT:    shll $8, %eax
 ; CHECK-NEXT:    bextrl %eax, f(%rip), %eax
-; CHECK-NEXT:    orl %ecx, %eax
+; CHECK-NEXT:    orl %edi, %eax
 ; CHECK-NEXT:    movl %eax, (%rdx)
 ; CHECK-NEXT:    retq
 entry:

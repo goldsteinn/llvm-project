@@ -34,14 +34,13 @@ define void @PR24199(i32 %a0) {
 ; CHECK-NEXT:    addss %xmm1, %xmm0
 ; CHECK-NEXT:    addss %xmm2, %xmm0
 ; CHECK-NEXT:    movss %xmm0, (%rax)
-; CHECK-NEXT:    testl %ebx, %ebx
-; CHECK-NEXT:    jne .LBB0_5
-; CHECK-NEXT:  # %bb.4: # %if.end
-; CHECK-NEXT:    xorps %xmm1, %xmm1
-; CHECK-NEXT:  .LBB0_5: # %if.end
 ; CHECK-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-NEXT:    addss %xmm0, %xmm0
+; CHECK-NEXT:    testl %ebx, %ebx
+; CHECK-NEXT:    je .LBB0_5
+; CHECK-NEXT:  # %bb.4:
 ; CHECK-NEXT:    addss %xmm1, %xmm0
+; CHECK-NEXT:  .LBB0_5: # %if.end
 ; CHECK-NEXT:    callq bar@PLT
 ; CHECK-NEXT:    addq $16, %rsp
 ; CHECK-NEXT:    .cfi_def_cfa_offset 16

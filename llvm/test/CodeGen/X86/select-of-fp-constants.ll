@@ -13,25 +13,28 @@
 define float @icmp_select_fp_constants(i32 %x) nounwind readnone {
 ; X86-LABEL: icmp_select_fp_constants:
 ; X86:       # %bb.0:
-; X86-NEXT:    xorl %eax, %eax
+; X86-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X86-NEXT:    leal 4(%eax), %ecx
 ; X86-NEXT:    cmpl $0, {{[0-9]+}}(%esp)
-; X86-NEXT:    sete %al
-; X86-NEXT:    flds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; X86-NEXT:    cmovnel %eax, %ecx
+; X86-NEXT:    flds (%ecx)
 ; X86-NEXT:    retl
 ;
 ; X64-SSE-LABEL: icmp_select_fp_constants:
 ; X64-SSE:       # %bb.0:
-; X64-SSE-NEXT:    xorl %eax, %eax
+; X64-SSE-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X64-SSE-NEXT:    leaq 4(%rax), %rcx
 ; X64-SSE-NEXT:    testl %edi, %edi
-; X64-SSE-NEXT:    sete %al
+; X64-SSE-NEXT:    cmovneq %rax, %rcx
 ; X64-SSE-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; X64-SSE-NEXT:    retq
 ;
 ; X64-AVX-LABEL: icmp_select_fp_constants:
 ; X64-AVX:       # %bb.0:
-; X64-AVX-NEXT:    xorl %eax, %eax
+; X64-AVX-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X64-AVX-NEXT:    leaq 4(%rax), %rcx
 ; X64-AVX-NEXT:    testl %edi, %edi
-; X64-AVX-NEXT:    sete %al
+; X64-AVX-NEXT:    cmovneq %rax, %rcx
 ; X64-AVX-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; X64-AVX-NEXT:    retq
 	%c = icmp eq i32 %x, 0
@@ -43,34 +46,43 @@ define float @fcmp_select_fp_constants(float %x) nounwind readnone {
 ; X86-SSE-LABEL: fcmp_select_fp_constants:
 ; X86-SSE:       # %bb.0:
 ; X86-SSE-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
-; X86-SSE-NEXT:    cmpneqss {{[0-9]+}}(%esp), %xmm0
-; X86-SSE-NEXT:    movd %xmm0, %eax
-; X86-SSE-NEXT:    andl $1, %eax
-; X86-SSE-NEXT:    flds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; X86-SSE-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X86-SSE-NEXT:    leal 4(%eax), %ecx
+; X86-SSE-NEXT:    ucomiss {{\.?LCPI[0-9]+_[0-9]+}}, %xmm0
+; X86-SSE-NEXT:    cmovnel %ecx, %eax
+; X86-SSE-NEXT:    cmovpl %ecx, %eax
+; X86-SSE-NEXT:    flds (%eax)
 ; X86-SSE-NEXT:    retl
 ;
 ; X86-AVX2-LABEL: fcmp_select_fp_constants:
 ; X86-AVX2:       # %bb.0:
 ; X86-AVX2-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
-; X86-AVX2-NEXT:    vcmpneqss {{[0-9]+}}(%esp), %xmm0, %xmm0
-; X86-AVX2-NEXT:    vmovd %xmm0, %eax
-; X86-AVX2-NEXT:    andl $1, %eax
-; X86-AVX2-NEXT:    flds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; X86-AVX2-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X86-AVX2-NEXT:    leal 4(%eax), %ecx
+; X86-AVX2-NEXT:    vucomiss {{\.?LCPI[0-9]+_[0-9]+}}, %xmm0
+; X86-AVX2-NEXT:    cmovnel %ecx, %eax
+; X86-AVX2-NEXT:    cmovpl %ecx, %eax
+; X86-AVX2-NEXT:    flds (%eax)
 ; X86-AVX2-NEXT:    retl
 ;
 ; X86-AVX512F-LABEL: fcmp_select_fp_constants:
 ; X86-AVX512F:       # %bb.0:
 ; X86-AVX512F-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
-; X86-AVX512F-NEXT:    vcmpneqss {{\.?LCPI[0-9]+_[0-9]+}}, %xmm0, %k0
-; X86-AVX512F-NEXT:    kmovw %k0, %eax
-; X86-AVX512F-NEXT:    flds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; X86-AVX512F-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X86-AVX512F-NEXT:    leal 4(%eax), %ecx
+; X86-AVX512F-NEXT:    vucomiss {{\.?LCPI[0-9]+_[0-9]+}}, %xmm0
+; X86-AVX512F-NEXT:    cmovnel %ecx, %eax
+; X86-AVX512F-NEXT:    cmovpl %ecx, %eax
+; X86-AVX512F-NEXT:    flds (%eax)
 ; X86-AVX512F-NEXT:    retl
 ;
 ; X64-SSE-LABEL: fcmp_select_fp_constants:
 ; X64-SSE:       # %bb.0:
-; X64-SSE-NEXT:    cmpneqss {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm0
-; X64-SSE-NEXT:    movd %xmm0, %eax
-; X64-SSE-NEXT:    andl $1, %eax
+; X64-SSE-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X64-SSE-NEXT:    leaq 4(%rax), %rcx
+; X64-SSE-NEXT:    ucomiss {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm0
+; X64-SSE-NEXT:    cmovneq %rcx, %rax
+; X64-SSE-NEXT:    cmovpq %rcx, %rax
 ; X64-SSE-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; X64-SSE-NEXT:    retq
 ;

@@ -5,51 +5,54 @@
 define i32 @fn(i32 %a0, i32 %a1) {
 ; X86-LABEL: fn:
 ; X86:       # %bb.0: # %entry
-; X86-NEXT:    pushl %ebx
+; X86-NEXT:    pushl %esi
 ; X86-NEXT:    .cfi_def_cfa_offset 8
-; X86-NEXT:    .cfi_offset %ebx, -8
-; X86-NEXT:    xorl %eax, %eax
-; X86-NEXT:    cmpl $1, {{[0-9]+}}(%esp)
-; X86-NEXT:    sete %cl
-; X86-NEXT:    setne %al
-; X86-NEXT:    cmpl $1, {{[0-9]+}}(%esp)
-; X86-NEXT:    sete %dl
-; X86-NEXT:    negl %eax
-; X86-NEXT:    addb %cl, %cl
-; X86-NEXT:    movl %eax, %ebx
-; X86-NEXT:    shll %cl, %ebx
-; X86-NEXT:    addb %dl, %dl
-; X86-NEXT:    movl %edx, %ecx
-; X86-NEXT:    shll %cl, %eax
+; X86-NEXT:    .cfi_offset %esi, -8
+; X86-NEXT:    movl {{[0-9]+}}(%esp), %edx
+; X86-NEXT:    xorl %ecx, %ecx
+; X86-NEXT:    cmpl $1, %edx
+; X86-NEXT:    setne %cl
+; X86-NEXT:    andl $1, %ecx
+; X86-NEXT:    negl %ecx
+; X86-NEXT:    leal (,%ecx,4), %eax
+; X86-NEXT:    cmpl $1, %edx
+; X86-NEXT:    movl {{[0-9]+}}(%esp), %esi
+; X86-NEXT:    movl %ecx, %edx
+; X86-NEXT:    jne .LBB0_2
+; X86-NEXT:  # %bb.1: # %entry
+; X86-NEXT:    movl %eax, %edx
+; X86-NEXT:  .LBB0_2: # %entry
+; X86-NEXT:    cmpl $1, %esi
+; X86-NEXT:    je .LBB0_4
+; X86-NEXT:  # %bb.3: # %entry
+; X86-NEXT:    movl %ecx, %eax
 ; X86-NEXT:    .p2align 4, 0x90
-; X86-NEXT:  .LBB0_1: # %bb1
+; X86-NEXT:  .LBB0_4: # %bb1
 ; X86-NEXT:    # =>This Inner Loop Header: Depth=1
-; X86-NEXT:    testl %ebx, %ebx
-; X86-NEXT:    je .LBB0_1
-; X86-NEXT:  # %bb.2: # %bb2
-; X86-NEXT:    popl %ebx
+; X86-NEXT:    testl %edx, %edx
+; X86-NEXT:    je .LBB0_4
+; X86-NEXT:  # %bb.5: # %bb2
+; X86-NEXT:    popl %esi
 ; X86-NEXT:    .cfi_def_cfa_offset 4
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: fn:
 ; X64:       # %bb.0: # %entry
-; X64-NEXT:    xorl %eax, %eax
+; X64-NEXT:    xorl %edx, %edx
 ; X64-NEXT:    cmpl $1, %edi
-; X64-NEXT:    sete %cl
-; X64-NEXT:    setne %al
+; X64-NEXT:    setne %dl
+; X64-NEXT:    andl $1, %edx
+; X64-NEXT:    negl %edx
+; X64-NEXT:    leal (,%rdx,4), %eax
+; X64-NEXT:    cmpl $1, %edi
+; X64-NEXT:    movl %eax, %ecx
+; X64-NEXT:    cmovnel %edx, %ecx
 ; X64-NEXT:    cmpl $1, %esi
-; X64-NEXT:    sete %dl
-; X64-NEXT:    negl %eax
-; X64-NEXT:    addb %cl, %cl
-; X64-NEXT:    movl %eax, %esi
-; X64-NEXT:    shll %cl, %esi
-; X64-NEXT:    addb %dl, %dl
-; X64-NEXT:    movl %edx, %ecx
-; X64-NEXT:    shll %cl, %eax
+; X64-NEXT:    cmovnel %edx, %eax
 ; X64-NEXT:    .p2align 4, 0x90
 ; X64-NEXT:  .LBB0_1: # %bb1
 ; X64-NEXT:    # =>This Inner Loop Header: Depth=1
-; X64-NEXT:    testl %esi, %esi
+; X64-NEXT:    testl %ecx, %ecx
 ; X64-NEXT:    je .LBB0_1
 ; X64-NEXT:  # %bb.2: # %bb2
 ; X64-NEXT:    retq

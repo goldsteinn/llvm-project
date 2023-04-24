@@ -336,11 +336,10 @@ define i64 @test_fptoui_i64(ptr %p) #0 {
 ; CHECK-I686-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-I686-NEXT:    movss {{.*#+}} xmm1 = mem[0],zero,zero,zero
 ; CHECK-I686-NEXT:    ucomiss %xmm1, %xmm0
-; CHECK-I686-NEXT:    jae .LBB9_2
+; CHECK-I686-NEXT:    jb .LBB9_2
 ; CHECK-I686-NEXT:  # %bb.1:
-; CHECK-I686-NEXT:    xorps %xmm1, %xmm1
-; CHECK-I686-NEXT:  .LBB9_2:
 ; CHECK-I686-NEXT:    subss %xmm1, %xmm0
+; CHECK-I686-NEXT:  .LBB9_2:
 ; CHECK-I686-NEXT:    movss %xmm0, {{[0-9]+}}(%esp)
 ; CHECK-I686-NEXT:    setae %al
 ; CHECK-I686-NEXT:    flds {{[0-9]+}}(%esp)
@@ -411,12 +410,14 @@ define void @test_uitofp_i64(i64 %a, ptr %p) #0 {
 ; CHECK-I686-NEXT:    pushl %esi
 ; CHECK-I686-NEXT:    subl $24, %esp
 ; CHECK-I686-NEXT:    movl {{[0-9]+}}(%esp), %esi
-; CHECK-I686-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; CHECK-I686-NEXT:    movq {{.*#+}} xmm0 = mem[0],zero
 ; CHECK-I686-NEXT:    movq %xmm0, {{[0-9]+}}(%esp)
-; CHECK-I686-NEXT:    shrl $31, %eax
+; CHECK-I686-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; CHECK-I686-NEXT:    leal 4(%eax), %ecx
+; CHECK-I686-NEXT:    cmpl $0, {{[0-9]+}}(%esp)
+; CHECK-I686-NEXT:    cmovnsl %eax, %ecx
 ; CHECK-I686-NEXT:    fildll {{[0-9]+}}(%esp)
-; CHECK-I686-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; CHECK-I686-NEXT:    fadds (%ecx)
 ; CHECK-I686-NEXT:    fstps (%esp)
 ; CHECK-I686-NEXT:    calll __truncsfhf2
 ; CHECK-I686-NEXT:    pextrw $0, %xmm0, %eax

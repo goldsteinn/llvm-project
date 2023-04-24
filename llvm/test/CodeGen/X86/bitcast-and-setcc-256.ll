@@ -583,16 +583,13 @@ define i8 @v8i32_or_select(<8 x i32> %a0, <8 x i32> %a1, <8 x i32> %a2, <8 x i32
 ; AVX512F-NEXT:    vpcmpeqd %ymm1, %ymm0, %k0
 ; AVX512F-NEXT:    vpxor %xmm1, %xmm1, %xmm1
 ; AVX512F-NEXT:    vpcmpgtd %ymm3, %ymm1, %k1
-; AVX512F-NEXT:    testb $1, %dil
-; AVX512F-NEXT:    jne .LBB7_1
-; AVX512F-NEXT:  # %bb.2:
-; AVX512F-NEXT:    kxorw %k0, %k0, %k2
-; AVX512F-NEXT:    jmp .LBB7_3
-; AVX512F-NEXT:  .LBB7_1:
-; AVX512F-NEXT:    vpcmpeqd %ymm2, %ymm0, %k2
-; AVX512F-NEXT:  .LBB7_3:
 ; AVX512F-NEXT:    korw %k0, %k1, %k0
-; AVX512F-NEXT:    korw %k2, %k0, %k0
+; AVX512F-NEXT:    testb $1, %dil
+; AVX512F-NEXT:    je .LBB7_2
+; AVX512F-NEXT:  # %bb.1:
+; AVX512F-NEXT:    vpcmpeqd %ymm2, %ymm0, %k1
+; AVX512F-NEXT:    korw %k1, %k0, %k0
+; AVX512F-NEXT:  .LBB7_2:
 ; AVX512F-NEXT:    kmovw %k0, %eax
 ; AVX512F-NEXT:    # kill: def $al killed $al killed $eax
 ; AVX512F-NEXT:    vzeroupper
@@ -603,16 +600,13 @@ define i8 @v8i32_or_select(<8 x i32> %a0, <8 x i32> %a1, <8 x i32> %a2, <8 x i32
 ; AVX512BW-NEXT:    vpcmpeqd %ymm1, %ymm0, %k0
 ; AVX512BW-NEXT:    vpxor %xmm1, %xmm1, %xmm1
 ; AVX512BW-NEXT:    vpcmpgtd %ymm3, %ymm1, %k1
-; AVX512BW-NEXT:    testb $1, %dil
-; AVX512BW-NEXT:    jne .LBB7_1
-; AVX512BW-NEXT:  # %bb.2:
-; AVX512BW-NEXT:    kxorw %k0, %k0, %k2
-; AVX512BW-NEXT:    jmp .LBB7_3
-; AVX512BW-NEXT:  .LBB7_1:
-; AVX512BW-NEXT:    vpcmpeqd %ymm2, %ymm0, %k2
-; AVX512BW-NEXT:  .LBB7_3:
 ; AVX512BW-NEXT:    korw %k0, %k1, %k0
-; AVX512BW-NEXT:    korw %k2, %k0, %k0
+; AVX512BW-NEXT:    testb $1, %dil
+; AVX512BW-NEXT:    je .LBB7_2
+; AVX512BW-NEXT:  # %bb.1:
+; AVX512BW-NEXT:    vpcmpeqd %ymm2, %ymm0, %k1
+; AVX512BW-NEXT:    korw %k1, %k0, %k0
+; AVX512BW-NEXT:  .LBB7_2:
 ; AVX512BW-NEXT:    kmovd %k0, %eax
 ; AVX512BW-NEXT:    # kill: def $al killed $al killed $eax
 ; AVX512BW-NEXT:    vzeroupper

@@ -328,12 +328,14 @@ define float @u64_to_f(i64 %a) nounwind {
 ; AVX512F_32-NEXT:    movl %esp, %ebp
 ; AVX512F_32-NEXT:    andl $-8, %esp
 ; AVX512F_32-NEXT:    subl $16, %esp
-; AVX512F_32-NEXT:    movl 12(%ebp), %eax
 ; AVX512F_32-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
 ; AVX512F_32-NEXT:    vmovlps %xmm0, {{[0-9]+}}(%esp)
-; AVX512F_32-NEXT:    shrl $31, %eax
+; AVX512F_32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; AVX512F_32-NEXT:    leal 4(%eax), %ecx
+; AVX512F_32-NEXT:    cmpl $0, 12(%ebp)
+; AVX512F_32-NEXT:    cmovnsl %eax, %ecx
 ; AVX512F_32-NEXT:    fildll {{[0-9]+}}(%esp)
-; AVX512F_32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; AVX512F_32-NEXT:    fadds (%ecx)
 ; AVX512F_32-NEXT:    fstps {{[0-9]+}}(%esp)
 ; AVX512F_32-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; AVX512F_32-NEXT:    vmovss %xmm0, (%esp)
@@ -348,12 +350,14 @@ define float @u64_to_f(i64 %a) nounwind {
 ; SSE2_32-NEXT:    movl %esp, %ebp
 ; SSE2_32-NEXT:    andl $-8, %esp
 ; SSE2_32-NEXT:    subl $16, %esp
-; SSE2_32-NEXT:    movl 12(%ebp), %eax
 ; SSE2_32-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
 ; SSE2_32-NEXT:    movlps %xmm0, {{[0-9]+}}(%esp)
-; SSE2_32-NEXT:    shrl $31, %eax
+; SSE2_32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; SSE2_32-NEXT:    leal 4(%eax), %ecx
+; SSE2_32-NEXT:    cmpl $0, 12(%ebp)
+; SSE2_32-NEXT:    cmovnsl %eax, %ecx
 ; SSE2_32-NEXT:    fildll {{[0-9]+}}(%esp)
-; SSE2_32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%eax,4)
+; SSE2_32-NEXT:    fadds (%ecx)
 ; SSE2_32-NEXT:    fstps {{[0-9]+}}(%esp)
 ; SSE2_32-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; SSE2_32-NEXT:    movss %xmm0, (%esp)
@@ -390,9 +394,12 @@ define float @u64_to_f(i64 %a) nounwind {
 ; SSE1_32-NEXT:    movl %eax, {{[0-9]+}}(%esp)
 ; SSE1_32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; SSE1_32-NEXT:    fstpl {{[0-9]+}}(%esp)
-; SSE1_32-NEXT:    shrl $31, %ecx
+; SSE1_32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; SSE1_32-NEXT:    leal 4(%eax), %edx
+; SSE1_32-NEXT:    testl %ecx, %ecx
+; SSE1_32-NEXT:    cmovnsl %eax, %edx
 ; SSE1_32-NEXT:    fildll {{[0-9]+}}(%esp)
-; SSE1_32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%ecx,4)
+; SSE1_32-NEXT:    fadds (%edx)
 ; SSE1_32-NEXT:    fstps {{[0-9]+}}(%esp)
 ; SSE1_32-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; SSE1_32-NEXT:    movss %xmm0, (%esp)
@@ -411,9 +418,14 @@ define float @u64_to_f(i64 %a) nounwind {
 ; X87-NEXT:    movl 12(%ebp), %ecx
 ; X87-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
 ; X87-NEXT:    movl %eax, {{[0-9]+}}(%esp)
-; X87-NEXT:    shrl $31, %ecx
+; X87-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X87-NEXT:    testl %ecx, %ecx
+; X87-NEXT:    jns .LBB6_2
+; X87-NEXT:  # %bb.1:
+; X87-NEXT:    addl $4, %eax
+; X87-NEXT:  .LBB6_2:
 ; X87-NEXT:    fildll {{[0-9]+}}(%esp)
-; X87-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%ecx,4)
+; X87-NEXT:    fadds (%eax)
 ; X87-NEXT:    fstps {{[0-9]+}}(%esp)
 ; X87-NEXT:    flds {{[0-9]+}}(%esp)
 ; X87-NEXT:    movl %ebp, %esp
@@ -699,9 +711,12 @@ define double @u64_to_d(i64 %a) nounwind {
 ; SSE1_32-NEXT:    movl 12(%ebp), %ecx
 ; SSE1_32-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
 ; SSE1_32-NEXT:    movl %eax, (%esp)
-; SSE1_32-NEXT:    shrl $31, %ecx
+; SSE1_32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; SSE1_32-NEXT:    leal 4(%eax), %edx
+; SSE1_32-NEXT:    testl %ecx, %ecx
+; SSE1_32-NEXT:    cmovnsl %eax, %edx
 ; SSE1_32-NEXT:    fildll (%esp)
-; SSE1_32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%ecx,4)
+; SSE1_32-NEXT:    fadds (%edx)
 ; SSE1_32-NEXT:    fstpl {{[0-9]+}}(%esp)
 ; SSE1_32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; SSE1_32-NEXT:    movl %ebp, %esp
@@ -718,9 +733,14 @@ define double @u64_to_d(i64 %a) nounwind {
 ; X87-NEXT:    movl 12(%ebp), %ecx
 ; X87-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
 ; X87-NEXT:    movl %eax, (%esp)
-; X87-NEXT:    shrl $31, %ecx
+; X87-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X87-NEXT:    testl %ecx, %ecx
+; X87-NEXT:    jns .LBB9_2
+; X87-NEXT:  # %bb.1:
+; X87-NEXT:    addl $4, %eax
+; X87-NEXT:  .LBB9_2:
 ; X87-NEXT:    fildll (%esp)
-; X87-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%ecx,4)
+; X87-NEXT:    fadds (%eax)
 ; X87-NEXT:    fstpl {{[0-9]+}}(%esp)
 ; X87-NEXT:    fldl {{[0-9]+}}(%esp)
 ; X87-NEXT:    movl %ebp, %esp
@@ -820,9 +840,12 @@ define double @u64_to_d_optsize(i64 %a) nounwind optsize {
 ; SSE1_32-NEXT:    movl 12(%ebp), %ecx
 ; SSE1_32-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
 ; SSE1_32-NEXT:    movl %eax, (%esp)
-; SSE1_32-NEXT:    shrl $31, %ecx
+; SSE1_32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; SSE1_32-NEXT:    leal 4(%eax), %edx
+; SSE1_32-NEXT:    testl %ecx, %ecx
+; SSE1_32-NEXT:    cmovnsl %eax, %edx
 ; SSE1_32-NEXT:    fildll (%esp)
-; SSE1_32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%ecx,4)
+; SSE1_32-NEXT:    fadds (%edx)
 ; SSE1_32-NEXT:    fstpl {{[0-9]+}}(%esp)
 ; SSE1_32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; SSE1_32-NEXT:    movl %ebp, %esp
@@ -839,9 +862,14 @@ define double @u64_to_d_optsize(i64 %a) nounwind optsize {
 ; X87-NEXT:    movl 12(%ebp), %ecx
 ; X87-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
 ; X87-NEXT:    movl %eax, (%esp)
-; X87-NEXT:    shrl $31, %ecx
+; X87-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X87-NEXT:    testl %ecx, %ecx
+; X87-NEXT:    jns .LBB10_2
+; X87-NEXT:  # %bb.1:
+; X87-NEXT:    addl $4, %eax
+; X87-NEXT:  .LBB10_2:
 ; X87-NEXT:    fildll (%esp)
-; X87-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%ecx,4)
+; X87-NEXT:    fadds (%eax)
 ; X87-NEXT:    fstpl {{[0-9]+}}(%esp)
 ; X87-NEXT:    fldl {{[0-9]+}}(%esp)
 ; X87-NEXT:    movl %ebp, %esp
@@ -1064,22 +1092,25 @@ define double @s64_to_d_2(i64 %a) nounwind {
 }
 
 define x86_fp80 @u64_to_x(i64 %a) nounwind {
-; CHECK32-LABEL: u64_to_x:
-; CHECK32:       # %bb.0:
-; CHECK32-NEXT:    pushl %ebp
-; CHECK32-NEXT:    movl %esp, %ebp
-; CHECK32-NEXT:    andl $-8, %esp
-; CHECK32-NEXT:    subl $8, %esp
-; CHECK32-NEXT:    movl 8(%ebp), %eax
-; CHECK32-NEXT:    movl 12(%ebp), %ecx
-; CHECK32-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
-; CHECK32-NEXT:    movl %eax, (%esp)
-; CHECK32-NEXT:    shrl $31, %ecx
-; CHECK32-NEXT:    fildll (%esp)
-; CHECK32-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%ecx,4)
-; CHECK32-NEXT:    movl %ebp, %esp
-; CHECK32-NEXT:    popl %ebp
-; CHECK32-NEXT:    retl
+; AVX512_32-LABEL: u64_to_x:
+; AVX512_32:       # %bb.0:
+; AVX512_32-NEXT:    pushl %ebp
+; AVX512_32-NEXT:    movl %esp, %ebp
+; AVX512_32-NEXT:    andl $-8, %esp
+; AVX512_32-NEXT:    subl $8, %esp
+; AVX512_32-NEXT:    movl 8(%ebp), %eax
+; AVX512_32-NEXT:    movl 12(%ebp), %ecx
+; AVX512_32-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
+; AVX512_32-NEXT:    movl %eax, (%esp)
+; AVX512_32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; AVX512_32-NEXT:    leal 4(%eax), %edx
+; AVX512_32-NEXT:    testl %ecx, %ecx
+; AVX512_32-NEXT:    cmovnsl %eax, %edx
+; AVX512_32-NEXT:    fildll (%esp)
+; AVX512_32-NEXT:    fadds (%edx)
+; AVX512_32-NEXT:    movl %ebp, %esp
+; AVX512_32-NEXT:    popl %ebp
+; AVX512_32-NEXT:    retl
 ;
 ; CHECK64-LABEL: u64_to_x:
 ; CHECK64:       # %bb.0:
@@ -1090,6 +1121,48 @@ define x86_fp80 @u64_to_x(i64 %a) nounwind {
 ; CHECK64-NEXT:    fildll -{{[0-9]+}}(%rsp)
 ; CHECK64-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%rax,4)
 ; CHECK64-NEXT:    retq
+;
+; SSE_32-LABEL: u64_to_x:
+; SSE_32:       # %bb.0:
+; SSE_32-NEXT:    pushl %ebp
+; SSE_32-NEXT:    movl %esp, %ebp
+; SSE_32-NEXT:    andl $-8, %esp
+; SSE_32-NEXT:    subl $8, %esp
+; SSE_32-NEXT:    movl 8(%ebp), %eax
+; SSE_32-NEXT:    movl 12(%ebp), %ecx
+; SSE_32-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
+; SSE_32-NEXT:    movl %eax, (%esp)
+; SSE_32-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; SSE_32-NEXT:    leal 4(%eax), %edx
+; SSE_32-NEXT:    testl %ecx, %ecx
+; SSE_32-NEXT:    cmovnsl %eax, %edx
+; SSE_32-NEXT:    fildll (%esp)
+; SSE_32-NEXT:    fadds (%edx)
+; SSE_32-NEXT:    movl %ebp, %esp
+; SSE_32-NEXT:    popl %ebp
+; SSE_32-NEXT:    retl
+;
+; X87-LABEL: u64_to_x:
+; X87:       # %bb.0:
+; X87-NEXT:    pushl %ebp
+; X87-NEXT:    movl %esp, %ebp
+; X87-NEXT:    andl $-8, %esp
+; X87-NEXT:    subl $8, %esp
+; X87-NEXT:    movl 8(%ebp), %eax
+; X87-NEXT:    movl 12(%ebp), %ecx
+; X87-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
+; X87-NEXT:    movl %eax, (%esp)
+; X87-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X87-NEXT:    testl %ecx, %ecx
+; X87-NEXT:    jns .LBB13_2
+; X87-NEXT:  # %bb.1:
+; X87-NEXT:    addl $4, %eax
+; X87-NEXT:  .LBB13_2:
+; X87-NEXT:    fildll (%esp)
+; X87-NEXT:    fadds (%eax)
+; X87-NEXT:    movl %ebp, %esp
+; X87-NEXT:    popl %ebp
+; X87-NEXT:    retl
   %r = uitofp i64 %a to x86_fp80
   ret x86_fp80 %r
 }

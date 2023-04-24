@@ -903,9 +903,14 @@ define x86_fp80 @uint64_to_fp80(i64 %x) #0 {
 ; X86-NEXT:    movl 12(%ebp), %ecx
 ; X86-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
 ; X86-NEXT:    movl %eax, (%esp)
-; X86-NEXT:    shrl $31, %ecx
+; X86-NEXT:    movl ${{\.?LCPI[0-9]+_[0-9]+}}, %eax
+; X86-NEXT:    testl %ecx, %ecx
+; X86-NEXT:    jns .LBB28_2
+; X86-NEXT:  # %bb.1:
+; X86-NEXT:    addl $4, %eax
+; X86-NEXT:  .LBB28_2:
 ; X86-NEXT:    fildll (%esp)
-; X86-NEXT:    fadds {{\.?LCPI[0-9]+_[0-9]+}}(,%ecx,4)
+; X86-NEXT:    fadds (%eax)
 ; X86-NEXT:    wait
 ; X86-NEXT:    movl %ebp, %esp
 ; X86-NEXT:    popl %ebp
