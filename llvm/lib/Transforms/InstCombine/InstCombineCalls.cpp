@@ -3378,6 +3378,231 @@ bool InstCombinerImpl::annotateAnyAllocSite(CallBase &Call,
   return Changed;
 }
 
+// See which (if any) arguments can of the callsite can inherit nocapture from
+// caller arguments. This is useful if the caller function is inlined as
+// inlining may lose the nocapture information.
+static void getNoCapturePropagations(const CallBase *CB,
+                                     SmallVector<unsigned, 4> *NoCaptureArgs) {
+  // TODO: Handle CallBr and Invoke. At the moment we only handle cases where
+  // the callsite dominates a return instruction. We could add more
+  // sophisticated logic to handle multiple target BBs as well, however.
+  if (!isa<CallInst>(CB))
+    return;
+
+  SmallPtrSet<Value *, 4> NoCaptureParentArguments;
+  // If this callsite is to a readonly function that doesn't throw then the only
+  // way to the pointer to be captured is through the return value. If the
+  // return type is void or the return value of this callsite is unused, then
+  // all the pointer parameters at this callsite must be nocapture. NB: This is
+  // a slight strengthening of the case done in the FunctionAttrs pass which has
+  // the same logic but only for void function. At specific callsites we can do
+  // non-void function if the return value is unused.
+  bool IsAlwaysNoCapture = CB->onlyReadsMemory() && CB->doesNotThrow() &&
+                           (CB->getType()->isVoidTy() || CB->use_empty());
+  if (IsAlwaysNoCapture) {
+    unsigned N = 0;
+    for (Value *V : CB->args()) {
+      if (V->getType()->isPointerTy() &&
+          !CB->paramHasAttr(N, Attribute::NoCapture))
+        NoCaptureArgs->push_back(N);
+      ++N;
+    }
+    return;
+  }
+
+  // If this is not trivially nocapture, then we propagate a nocapture argument
+  // if the callsite meets the following requirements:
+  //
+  //    1) The callsite is in a basic block that ends with a return statement.
+  //    2) Between the callsite the end of its basic block there are no
+  //       may-write instructions.
+  //    3) The return value of the callsite is not used (directly or indirectly)
+  //       as the address of a may-read instruction.
+  //    4) There are allocas or leaked (not freed or returned) mallocs reachable
+  //       from the callsite.
+  //    5) The callsite/caller are nothrow OR there is no landing padd in the
+  //       caller.
+  //
+  // These requirements are intentionally over conservative. We are only trying
+  // to catch relatively trivial cases.
+  //
+  // Requirements 1 & 2 are there to ensure that after the callsite has
+  // returned, the state of any captured in memory pointers cannot change. This
+  // implies that if the caller has any nocapture in memory gurantees, that
+  // state has been reached by the end of the callsite.
+  //
+  // Requirements 3 & 4 are to cover cases where pointers could escape the
+  // callsite (but not the caller) through non-dead code. Any return value thats
+  // loaded from (or used to create a pointer that is loaded from) could have
+  // derived from an argument. Finally, allocas/leaked mallocs in general are
+  // difficult (so we avoid them entirely). Callsites can arbitrarily store
+  // pointers in allocas for use later without violating a nocapture gurantee by
+  // the caller, as the allocas are torn down at caller return. Likewise a
+  // leaked malloc would not be accessible outside of the caller, but could
+  // still be accessible after the callsite. There are a variety of complex
+  // cases involving allocas/leaked mallocs. For simplicity, if we see either we
+  // simply fail.
+  //
+  // Requirement 5 is to cover the last way to escape to occur. If the
+  // callsite/caller is nothrow its a non-issue. If the callsite may throw, then
+  // a method of capture is through an exception. If the caller has no landing
+  // padd to catch this exception, then the exception state will be visible
+  // outside of the caller so any gurantees about nocapture made by the caller
+  // will apply to the callsites throw. If the caller has a landing padd, its
+  // possible for the callsite to capture a pointer in a throw that is later
+  // cleared by the caller.
+  const BasicBlock *BB = CB->getParent();
+  if (!BB)
+    return;
+
+  // Make sure this BB ends in a return (Requirement 1).
+  const Instruction *ITerm = BB->getTerminator();
+  if (!ITerm || !isa<ReturnInst>(ITerm))
+    return;
+
+  // Get caller.
+  const Function *PF = BB->getParent();
+  if (!PF)
+    return;
+
+  // See if caller has any nocapture arguments we may be able to propagate
+  // attributes from.
+  for (unsigned I = 0; I < PF->arg_size(); ++I)
+    if (PF->getArg(I)->hasNoCaptureAttr())
+      NoCaptureParentArguments.insert(PF->getArg(I));
+
+  unsigned N = 0;
+  for (Value *V : CB->args()) {
+    // See if this callsite argument is missing nocapture and its propagatable
+    // (nocapture in the caller).
+    if (!CB->paramHasAttr(N, Attribute::NoCapture) &&
+        NoCaptureParentArguments.contains(V))
+      NoCaptureArgs->push_back(N);
+    ++N;
+  }
+
+  if (NoCaptureArgs->empty())
+    return;
+
+  // Limit maximum amount of instructions we will check. The primary benefit
+  // of this combine is for smaller functions that will be inlined
+  // (potentially losing nocapture information), so a relatively small
+  // threshhold should be sufficient.
+  const unsigned kMaxChecks = 40;
+  unsigned Cnt = 0;
+
+  // Check requirements 2 & 3. We do so by scanning the basic block with the
+  // callsite from the callsite to the return. We keep track of all values
+  // derived from the return value of callsite. If we run into a may-read
+  // instruction that uses one of those derived value or any may-store
+  // instruction we fail.
+  SmallPtrSet<const Value *, 8> DerivedFromReturn;
+  for (const Value *U : CB->uses())
+    DerivedFromReturn.insert(U);
+
+  const Instruction *Ins = CB;
+  for (Cnt = 0; Cnt < kMaxChecks; ++Cnt) {
+    Ins = Ins->getNextNode();
+    if (Ins == nullptr || Ins == ITerm)
+      break;
+
+    // We have a write operation after callsite so fail as it may be clearing
+    // captured memory.
+    if (Ins->mayWriteToMemory() || isa<LandingPadInst>(Ins)) {
+      NoCaptureArgs->clear();
+      return;
+    }
+
+    for (const Value *U : Ins->operands()) {
+      if (DerivedFromReturn.contains(U)) {
+        DerivedFromReturn.insert(Ins);
+        break;
+      }
+    }
+
+    // We have a load from the returned pointer (or a pointer derived with the
+    // return value) so fail as this may have been from a captured return.
+    if (Ins->mayReadFromMemory() && DerivedFromReturn.contains(Ins)) {
+      NoCaptureArgs->clear();
+      return;
+    }
+  }
+
+  if (Cnt == kMaxChecks) {
+    NoCaptureArgs->clear();
+    return;
+  }
+
+  // Check all predecessors (basic blocks from which an alloca or leaked malloc
+  // may be able to reach this callsite). We are being incredibly conservative
+  // here. We could likely skip the alloca/leaked malloc search in a few cases.
+  // 1) If the callsite is the last instruction before the return or if there
+  // are no may-read instructions between the callsite and the return. 2) If
+  // there are possible stores to the alloca/leaked malloc that may reach the
+  // callsite its probably also safe. And/Or 3) If the callsite is readonly it
+  // could never capture in memory so these are non factor concerns. For now
+  // stay conservative, but over time these optimizations can be added.
+  SmallPtrSet<const BasicBlock *, 16> AllPreds{BB};
+  SmallVector<const BasicBlock *, 8> Preds = {BB};
+  bool MayThrow = !(CB->doesNotThrow() || PF->doesNotThrow());
+  while (!Preds.empty()) {
+    const BasicBlock *CurBB = Preds.back();
+    Preds.pop_back();
+    // Check all instructions in current BB for an alloca/leaked malloc.
+    for (const Value &V : *CurBB) {
+      if (&V == CB)
+        break;
+
+      bool Fail = false;
+
+      // If we reach max checks and can't rule out alloca/leaked malloc case
+      // fail.
+      if (Cnt++ >= kMaxChecks)
+        Fail = true;
+      // If we find an alloca fail.
+      if (isa<AllocaInst>(&V))
+        Fail = true;
+      // If we find leaked malloc fail.
+      else if (auto *MCB = dyn_cast<CallBase>(&V))
+        Fail = MCB->returnDoesNotAlias() &&
+               MCB != cast<ReturnInst>(ITerm)->getReturnValue();
+      // If we find a landing padd instruction fail.
+      else if (MayThrow && isa<LandingPadInst>(&V))
+        Fail = true;
+
+      if (Fail) {
+        NoCaptureArgs->clear();
+        return;
+      }
+    }
+
+    for (const BasicBlock *Pred : predecessors(CurBB))
+      if (AllPreds.insert(Pred).second)
+        Preds.push_back(Pred);
+  }
+
+  // Finally, if the callsite may throw and there is a landing padd in the
+  // caller then fail as we only analyzed the path from callsite -> dominated
+  // return. If the callsite may throw but there is no landing padd in the
+  // caller, then the throw will exit the callers scope so any nocapture
+  // gurantees inplace by the caller will apply to the callsite as well.
+  if (MayThrow) {
+    for (const BasicBlock &CurBB : *PF) {
+      // Skip BBs we have already checked.
+      if (AllPreds.contains(&CurBB))
+        continue;
+      for (const Instruction &CurIns : CurBB) {
+        if (isa<LandingPadInst>(&CurIns) || Cnt++ >= kMaxChecks) {
+          NoCaptureArgs->clear();
+          return;
+        }
+      }
+    }
+  }
+
+  return;
+}
+
 /// Improvements for call, callbr and invoke instructions.
 Instruction *InstCombinerImpl::visitCallBase(CallBase &Call) {
   bool Changed = annotateAnyAllocSite(Call, &TLI);
@@ -3385,24 +3610,34 @@ Instruction *InstCombinerImpl::visitCallBase(CallBase &Call) {
   // Mark any parameters that are known to be non-null with the nonnull
   // attribute.  This is helpful for inlining calls to functions with null
   // checks on their arguments.
-  SmallVector<unsigned, 4> ArgNos;
+  // Likewise try to mark parameters that are known not captured from parent
+  // attributes as nocapture.
+  SmallVector<unsigned, 4> ArgNosNonNull, ArgNosNoCapture;
   unsigned ArgNo = 0;
 
   for (Value *V : Call.args()) {
-    if (V->getType()->isPointerTy() &&
-        !Call.paramHasAttr(ArgNo, Attribute::NonNull) &&
-        isKnownNonZero(V, DL, 0, &AC, &Call, &DT))
-      ArgNos.push_back(ArgNo);
+    if (V->getType()->isPointerTy()) {
+      if (!Call.paramHasAttr(ArgNo, Attribute::NonNull) &&
+          isKnownNonZero(V, DL, 0, &AC, &Call, &DT))
+        ArgNosNonNull.push_back(ArgNo);
+    }
+
     ArgNo++;
   }
 
+  getNoCapturePropagations(&Call, &ArgNosNoCapture);
+
   assert(ArgNo == Call.arg_size() && "Call arguments not processed correctly.");
 
-  if (!ArgNos.empty()) {
+  if (!ArgNosNonNull.empty() || !ArgNosNoCapture.empty()) {
     AttributeList AS = Call.getAttributes();
     LLVMContext &Ctx = Call.getContext();
-    AS = AS.addParamAttribute(Ctx, ArgNos,
-                              Attribute::get(Ctx, Attribute::NonNull));
+    if (!ArgNosNonNull.empty())
+      AS = AS.addParamAttribute(Ctx, ArgNosNonNull,
+                                Attribute::get(Ctx, Attribute::NonNull));
+    if (!ArgNosNoCapture.empty())
+      AS = AS.addParamAttribute(Ctx, ArgNosNoCapture,
+                                Attribute::get(Ctx, Attribute::NoCapture));
     Call.setAttributes(AS);
     Changed = true;
   }

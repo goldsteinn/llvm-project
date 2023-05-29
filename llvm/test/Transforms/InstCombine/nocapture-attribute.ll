@@ -21,7 +21,7 @@ define void @simple_propegate_all_maybe_capture(ptr %a0, ptr %a1, ptr %a2) {
 define void @simple_propegated_a0_a1_nocapture_a2_maybe_capture(ptr nocapture %a0, ptr nocapture %a1, ptr %a2) local_unnamed_addr {
 ; CHECK-LABEL: define void @simple_propegated_a0_a1_nocapture_a2_maybe_capture
 ; CHECK-SAME: (ptr nocapture [[A0:%.*]], ptr nocapture [[A1:%.*]], ptr [[A2:%.*]]) local_unnamed_addr {
-; CHECK-NEXT:    tail call void @ptrs_maybe_capture(ptr [[A0]], ptr [[A1]], ptr [[A2]])
+; CHECK-NEXT:    tail call void @ptrs_maybe_capture(ptr nocapture [[A0]], ptr nocapture [[A1]], ptr [[A2]])
 ; CHECK-NEXT:    ret void
 ;
   tail call void @ptrs_maybe_capture(ptr %a0, ptr %a1, ptr %a2)
@@ -31,7 +31,7 @@ define void @simple_propegated_a0_a1_nocapture_a2_maybe_capture(ptr nocapture %a
 define void @simple_propegate_a2_nocapture2x_a1_maybe_capture(ptr nocapture %a0, ptr %a1, ptr nocapture %a2) {
 ; CHECK-LABEL: define void @simple_propegate_a2_nocapture2x_a1_maybe_capture
 ; CHECK-SAME: (ptr nocapture [[A0:%.*]], ptr [[A1:%.*]], ptr nocapture [[A2:%.*]]) {
-; CHECK-NEXT:    tail call void @ptrs_maybe_capture(ptr [[A2]], ptr [[A1]], ptr [[A2]])
+; CHECK-NEXT:    tail call void @ptrs_maybe_capture(ptr nocapture [[A2]], ptr [[A1]], ptr nocapture [[A2]])
 ; CHECK-NEXT:    ret void
 ;
   tail call void @ptrs_maybe_capture(ptr %a2, ptr %a1, ptr %a2)
@@ -41,7 +41,7 @@ define void @simple_propegate_a2_nocapture2x_a1_maybe_capture(ptr nocapture %a0,
 define i64 @propegate_past_trivially_read_only(ptr nocapture %a0, i64 %r) local_unnamed_addr {
 ; CHECK-LABEL: define i64 @propegate_past_trivially_read_only
 ; CHECK-SAME: (ptr nocapture [[A0:%.*]], i64 [[R:%.*]]) local_unnamed_addr {
-; CHECK-NEXT:    call void @ptrs_maybe_capture(ptr [[A0]], ptr [[A0]], ptr [[A0]])
+; CHECK-NEXT:    call void @ptrs_maybe_capture(ptr nocapture [[A0]], ptr nocapture [[A0]], ptr nocapture [[A0]])
 ; CHECK-NEXT:    [[R0:%.*]] = mul i64 [[R]], [[R]]
 ; CHECK-NEXT:    [[R1:%.*]] = mul i64 [[R0]], [[R0]]
 ; CHECK-NEXT:    [[R2:%.*]] = shl i64 [[R1]], 1
@@ -125,7 +125,7 @@ define i64 @propegate_non_reaching_alloca(ptr nocapture %a0, i64 %r, i1 %c, i1 %
 ; CHECK-NEXT:    [[UNUSED:%.*]] = call i64 @barrier(i64 0)
 ; CHECK-NEXT:    br i1 [[C2]], label [[TT:%.*]], label [[F]]
 ; CHECK:       TT:
-; CHECK-NEXT:    call void @ptrs_maybe_capture(ptr [[A0]], ptr [[A0]], ptr [[A0]])
+; CHECK-NEXT:    call void @ptrs_maybe_capture(ptr nocapture [[A0]], ptr nocapture [[A0]], ptr nocapture [[A0]])
 ; CHECK-NEXT:    ret i64 0
 ; CHECK:       F:
 ; CHECK-NEXT:    [[PN:%.*]] = alloca i64, align 8
@@ -178,7 +178,7 @@ define ptr @propegate_non_leaked_malloc(ptr nocapture %a0, i64 %r, i1 %c) local_
 ; CHECK-NEXT:    [[PN:%.*]] = call noalias ptr @malloc_like(i64 [[R]])
 ; CHECK-NEXT:    br i1 [[C]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    call void @ptrs_maybe_capture(ptr [[A0]], ptr [[A0]], ptr [[A0]])
+; CHECK-NEXT:    call void @ptrs_maybe_capture(ptr nocapture [[A0]], ptr nocapture [[A0]], ptr nocapture [[A0]])
 ; CHECK-NEXT:    ret ptr [[PN]]
 ; CHECK:       F:
 ; CHECK-NEXT:    [[TMP1:%.*]] = call i64 @ptr_maybe_capture(ptr [[PN]]) #[[ATTR0]]
@@ -208,7 +208,7 @@ define i64 @no_propegate_past_write_prop_at_end(ptr nocapture %a0, i64 %r) local
 ; CHECK-NEXT:    [[R5:%.*]] = add i64 [[R4]], [[R3]]
 ; CHECK-NEXT:    [[R6:%.*]] = call i64 @barrier(i64 [[R5]]) #[[ATTR0]]
 ; CHECK-NEXT:    store i64 [[R6]], ptr [[A0]], align 4
-; CHECK-NEXT:    [[TMP1:%.*]] = call i64 @ptr_maybe_capture(ptr nonnull [[A0]]) #[[ATTR0]]
+; CHECK-NEXT:    [[TMP1:%.*]] = call i64 @ptr_maybe_capture(ptr nocapture nonnull [[A0]]) #[[ATTR0]]
 ; CHECK-NEXT:    ret i64 [[R6]]
 ;
   call void @ptrs_maybe_capture(ptr %a0, ptr %a0, ptr %a0)
@@ -319,7 +319,7 @@ false:
 define i64 @propegate_return(ptr nocapture %a0) {
 ; CHECK-LABEL: define i64 @propegate_return
 ; CHECK-SAME: (ptr nocapture [[A0:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i64 @ptr_maybe_capture.i64(ptr [[A0]])
+; CHECK-NEXT:    [[R:%.*]] = call i64 @ptr_maybe_capture.i64(ptr nocapture [[A0]])
 ; CHECK-NEXT:    [[RR:%.*]] = mul i64 [[R]], [[R]]
 ; CHECK-NEXT:    ret i64 [[RR]]
 ;
