@@ -3629,17 +3629,140 @@ Instruction *InstCombinerImpl::visitCallBase(CallBase &Call) {
 
   assert(ArgNo == Call.arg_size() && "Call arguments not processed correctly.");
 
-  if (!ArgNosNonNull.empty() || !ArgNosNoCapture.empty()) {
+  auto AddCallAttributes = [&](const SmallVector<unsigned, 4> &ArgNos,
+                               Attribute::AttrKind Attr) {
+    if (ArgNos.empty())
+      return false;
+
     AttributeList AS = Call.getAttributes();
     LLVMContext &Ctx = Call.getContext();
-    if (!ArgNosNonNull.empty())
-      AS = AS.addParamAttribute(Ctx, ArgNosNonNull,
-                                Attribute::get(Ctx, Attribute::NonNull));
-    if (!ArgNosNoCapture.empty())
-      AS = AS.addParamAttribute(Ctx, ArgNosNoCapture,
-                                Attribute::get(Ctx, Attribute::NoCapture));
+    AS = AS.addParamAttribute(Ctx, ArgNos, Attribute::get(Ctx, Attr));
+
     Call.setAttributes(AS);
     Changed = true;
+    return true;
+  };
+
+  AddCallAttributes(ArgNosNonNull, Attribute::NonNull);
+  AddCallAttributes(ArgNosNoCapture, Attribute::NoCapture);
+
+  // Try and propagate attributes of the callers function/arguments/return to
+  // the callsite.
+  if (const BasicBlock *BB = Call.getParent()) {
+    if (const Function *PF = BB->getParent()) {
+
+      // Attributes of the function that apply to any instruction in the
+      // function (including the callsite).
+      std::array CallerFnAttrPropagations = {Attribute::MustProgress,
+                                             Attribute::WillReturn};
+
+      for (const Attribute::AttrKind Attr : CallerFnAttrPropagations) {
+        if (PF->hasFnAttribute(Attr) && !Call.hasFnAttr(Attr)) {
+          Call.addFnAttr(Attr);
+          Changed = true;
+        }
+      }
+
+      // Can't apply memory access attributes blindly, allocas local to the
+      // caller don't count for memory access restrictions of the caller so
+      // may be read/written too, irrelivant of caller attributes, by the
+      // callsite.
+      std::array CallerFnMemAttrPropagations = {
+          Attribute::ReadNone, Attribute::ReadOnly, Attribute::WriteOnly};
+
+      bool MayHaveAllocaArg = false;
+      for (Value *V : Call.args()) {
+        Value *UnderlyingObj = getUnderlyingObject(V);
+        MayHaveAllocaArg =
+            !isa<Argument>(UnderlyingObj) && !isa<GlobalValue>(UnderlyingObj);
+        if (MayHaveAllocaArg)
+          break;
+      }
+
+      // Check readnone, readonly, and writeonly attributes (both the direct
+      // function attribute and memoryeffect attribute). Only if callsite has NO
+      // alloca arguments do we apply attribute to the callsite directly.
+      //
+      // NB: we don't need to worry about allocas being stored indirectly in
+      // other objects. I.e
+      //
+      // declare @bar(ptr %p)
+      // define @foo(ptr %p) {
+      //    %a = alloca ptr
+      //    store ptr %a, ptr %p
+      //    call @bar(ptr %p)
+      // }
+      //
+      // If we are propagating any of the three attributes (readnone,
+      // readonly, writeonly), that type of nesting is IMPOSSIBLE. readnone:
+      // it would be illegal for foo to store `%a` in `%p` readonly: ...
+      // writeonly: it would be illegal for bar to read `%a` from `%p`
+      if (!MayHaveAllocaArg) {
+        for (const Attribute::AttrKind Attr : CallerFnMemAttrPropagations) {
+          if (PF->hasFnAttribute(Attr) && !Call.hasFnAttr(Attr)) {
+            Call.addFnAttr(Attr);
+            Changed = true;
+          }
+        }
+
+        if (PF->doesNotAccessMemory() && !Call.doesNotAccessMemory()) {
+          Call.setDoesNotAccessMemory();
+          Changed = true;
+        }
+
+        if (PF->onlyReadsMemory() && !Call.onlyReadsMemory()) {
+          Call.setOnlyReadsMemory();
+          Changed = true;
+        }
+        if (PF->onlyWritesMemory() && !Call.onlyWritesMemory()) {
+          Call.setOnlyWritesMemory();
+          Changed = true;
+        }
+      }
+
+      // Attributes that if true for the caller's return, must be true of the
+      // callsite's return value if it is used as the return value of the
+      // caller.
+      std::array CallerReturnAttrPropagations = {Attribute::NoUndef,
+                                                 Attribute::NonNull};
+      if (!Call.getType()->isVoidTy() && !PF->getType()->isVoidTy() &&
+          BB->getTerminator() && isa<ReturnInst>(BB->getTerminator())) {
+        if (cast<ReturnInst>(BB->getTerminator())->getReturnValue() == &Call) {
+          for (const Attribute::AttrKind Attr : CallerReturnAttrPropagations) {
+            if (PF->hasRetAttribute(Attr) && !Call.hasRetAttr(Attr)) {
+              Call.addRetAttr(Attr);
+              Changed = true;
+            }
+          }
+        }
+      }
+
+      // Attributes that, if true for a caller argument, must be true as well
+      // in the context of the callsite.
+      std::array CallerArgAttrPropagations = {
+          Attribute::NoUndef,  Attribute::NonNull,  Attribute::NoFree,
+          Attribute::ReadNone, Attribute::ReadOnly, Attribute::WriteOnly};
+
+      for (const Attribute::AttrKind Attr : CallerArgAttrPropagations) {
+        SmallPtrSet<Value *, 4> CallerArgs;
+        SmallVector<unsigned, 4> ArgNosAttr;
+        for (unsigned I = 0; I < PF->arg_size(); ++I)
+          if (PF->getArg(I)->hasAttribute(Attr))
+            CallerArgs.insert(PF->getArg(I));
+
+        unsigned N = 0;
+        // TODO: For the readnone, readonly, and writeonly attributes, we may be
+        // able to inherent from the callsite params underlying object if that
+        // underlying object is an argument.
+        for (Value *V : Call.args()) {
+          if (!Call.paramHasAttr(N, Attr) && CallerArgs.contains(V))
+            ArgNosAttr.push_back(N);
+          N++;
+        }
+
+        AddCallAttributes(ArgNosAttr, Attr);
+      }
+    }
   }
 
   // If the callee is a pointer to a function, attempt to move any casts to the

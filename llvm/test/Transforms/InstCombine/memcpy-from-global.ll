@@ -339,7 +339,7 @@ entry:
 ; Tests that we can eliminate allocas copied from readonly noalias pointers.
 define void @memcpy_from_readonly_noalias(ptr readonly noalias align 8 dereferenceable(124) %arg) {
 ; CHECK-LABEL: @memcpy_from_readonly_noalias(
-; CHECK-NEXT:    call void @bar(ptr nonnull [[ARG:%.*]]) #[[ATTR3]]
+; CHECK-NEXT:    call void @bar(ptr nonnull readonly [[ARG:%.*]]) #[[ATTR3]]
 ; CHECK-NEXT:    ret void
 ;
   %alloca = alloca %T, align 8

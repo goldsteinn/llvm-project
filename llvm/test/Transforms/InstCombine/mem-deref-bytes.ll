@@ -12,7 +12,7 @@ declare void @llvm.memset.p0.i64(ptr nocapture, i8, i64, i1)
 
 define i32 @memcmp_const_size_set_deref(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @memcmp_const_size_set_deref(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull dereferenceable(16) [[D:%.*]], ptr noundef nonnull dereferenceable(16) [[S:%.*]], i64 16)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull readonly dereferenceable(16) [[D:%.*]], ptr noundef nonnull readonly dereferenceable(16) [[S:%.*]], i64 16)
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
   %call = tail call i32 @memcmp(ptr %d, ptr %s, i64 16)
@@ -21,7 +21,7 @@ define i32 @memcmp_const_size_set_deref(ptr nocapture readonly %d, ptr nocapture
 
 define i32 @memcmp_const_size_update_deref(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @memcmp_const_size_update_deref(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull dereferenceable(16) [[D:%.*]], ptr noundef nonnull dereferenceable(16) [[S:%.*]], i64 16)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull readonly dereferenceable(16) [[D:%.*]], ptr noundef nonnull readonly dereferenceable(16) [[S:%.*]], i64 16)
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
   %call = tail call i32 @memcmp(ptr dereferenceable(4) %d, ptr dereferenceable(8) %s, i64 16)
@@ -30,7 +30,7 @@ define i32 @memcmp_const_size_update_deref(ptr nocapture readonly %d, ptr nocapt
 
 define i32 @memcmp_const_size_update_deref2(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @memcmp_const_size_update_deref2(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull dereferenceable(16) [[D:%.*]], ptr noundef nonnull dereferenceable(16) [[S:%.*]], i64 16)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull readonly dereferenceable(16) [[D:%.*]], ptr noundef nonnull readonly dereferenceable(16) [[S:%.*]], i64 16)
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
   %call = tail call i32 @memcmp(ptr %d, ptr dereferenceable_or_null(8) %s, i64 16)
@@ -39,7 +39,7 @@ define i32 @memcmp_const_size_update_deref2(ptr nocapture readonly %d, ptr nocap
 
 define i32 @memcmp_const_size_update_deref3(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @memcmp_const_size_update_deref3(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull dereferenceable(40) [[D:%.*]], ptr noundef nonnull dereferenceable(16) [[S:%.*]], i64 16)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull readonly dereferenceable(40) [[D:%.*]], ptr noundef nonnull readonly dereferenceable(16) [[S:%.*]], i64 16)
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
   %call = tail call i32 @memcmp(ptr dereferenceable(40) %d, ptr %s, i64 16)
@@ -48,7 +48,7 @@ define i32 @memcmp_const_size_update_deref3(ptr nocapture readonly %d, ptr nocap
 
 define i32 @memcmp_const_size_update_deref4(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @memcmp_const_size_update_deref4(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull dereferenceable(16) [[D:%.*]], ptr noundef nonnull dereferenceable(16) [[S:%.*]], i64 16)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull readonly dereferenceable(16) [[D:%.*]], ptr noundef nonnull readonly dereferenceable(16) [[S:%.*]], i64 16)
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
   %call = tail call i32 @memcmp(ptr dereferenceable_or_null(16) %d, ptr %s, i64 16)
@@ -57,7 +57,7 @@ define i32 @memcmp_const_size_update_deref4(ptr nocapture readonly %d, ptr nocap
 
 define i32 @memcmp_const_size_update_deref5(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @memcmp_const_size_update_deref5(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull dereferenceable(40) [[D:%.*]], ptr noundef nonnull dereferenceable(16) [[S:%.*]], i64 16)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull readonly dereferenceable(40) [[D:%.*]], ptr noundef nonnull readonly dereferenceable(16) [[S:%.*]], i64 16)
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
   %call = tail call i32 @memcmp(ptr dereferenceable_or_null(40) %d, ptr %s, i64 16)
@@ -66,7 +66,7 @@ define i32 @memcmp_const_size_update_deref5(ptr nocapture readonly %d, ptr nocap
 
 define i32 @memcmp_const_size_update_deref6(ptr nocapture readonly %d, ptr nocapture readonly %s) null_pointer_is_valid {
 ; CHECK-LABEL: @memcmp_const_size_update_deref6(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef dereferenceable(16) dereferenceable_or_null(40) [[D:%.*]], ptr noundef dereferenceable(16) [[S:%.*]], i64 16)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef readonly dereferenceable(16) dereferenceable_or_null(40) [[D:%.*]], ptr noundef readonly dereferenceable(16) [[S:%.*]], i64 16)
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
   %call = tail call i32 @memcmp(ptr dereferenceable_or_null(40) %d, ptr %s, i64 16)
@@ -75,7 +75,7 @@ define i32 @memcmp_const_size_update_deref6(ptr nocapture readonly %d, ptr nocap
 
 define i32 @memcmp_const_size_update_deref7(ptr nocapture readonly %d, ptr nocapture readonly %s) null_pointer_is_valid {
 ; CHECK-LABEL: @memcmp_const_size_update_deref7(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull dereferenceable(40) [[D:%.*]], ptr noundef dereferenceable(16) [[S:%.*]], i64 16)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull readonly dereferenceable(40) [[D:%.*]], ptr noundef readonly dereferenceable(16) [[S:%.*]], i64 16)
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
   %call = tail call i32 @memcmp(ptr nonnull dereferenceable_or_null(40) %d, ptr %s, i64 16)
@@ -84,7 +84,7 @@ define i32 @memcmp_const_size_update_deref7(ptr nocapture readonly %d, ptr nocap
 
 define i32 @memcmp_const_size_no_update_deref(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @memcmp_const_size_no_update_deref(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull dereferenceable(40) [[D:%.*]], ptr noundef nonnull dereferenceable(20) [[S:%.*]], i64 16)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr noundef nonnull readonly dereferenceable(40) [[D:%.*]], ptr noundef nonnull readonly dereferenceable(20) [[S:%.*]], i64 16)
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
   %call = tail call i32 @memcmp(ptr dereferenceable(40) %d, ptr dereferenceable(20) %s, i64 16)
@@ -93,7 +93,7 @@ define i32 @memcmp_const_size_no_update_deref(ptr nocapture readonly %d, ptr noc
 
 define i32 @memcmp_nonconst_size(ptr nocapture readonly %d, ptr nocapture readonly %s, i64 %n) {
 ; CHECK-LABEL: @memcmp_nonconst_size(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr [[D:%.*]], ptr [[S:%.*]], i64 [[N:%.*]])
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @memcmp(ptr readonly [[D:%.*]], ptr readonly [[S:%.*]], i64 [[N:%.*]])
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
   %call = tail call i32 @memcmp(ptr %d, ptr %s, i64 %n)
@@ -102,7 +102,7 @@ define i32 @memcmp_nonconst_size(ptr nocapture readonly %d, ptr nocapture readon
 
 define ptr @memcpy_const_size_set_deref(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @memcpy_const_size_set_deref(
-; CHECK-NEXT:    tail call void @llvm.memcpy.p0.p0.i64(ptr noundef nonnull align 1 dereferenceable(64) [[D:%.*]], ptr noundef nonnull align 1 dereferenceable(64) [[S:%.*]], i64 64, i1 false)
+; CHECK-NEXT:    tail call void @llvm.memcpy.p0.p0.i64(ptr noundef nonnull readonly align 1 dereferenceable(64) [[D:%.*]], ptr noundef nonnull readonly align 1 dereferenceable(64) [[S:%.*]], i64 64, i1 false)
 ; CHECK-NEXT:    ret ptr [[D]]
 ;
   %call = tail call ptr @memcpy(ptr %d, ptr %s, i64 64)
@@ -111,7 +111,7 @@ define ptr @memcpy_const_size_set_deref(ptr nocapture readonly %d, ptr nocapture
 
 define ptr @memmove_const_size_set_deref(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @memmove_const_size_set_deref(
-; CHECK-NEXT:    tail call void @llvm.memmove.p0.p0.i64(ptr noundef nonnull align 1 dereferenceable(64) [[D:%.*]], ptr noundef nonnull align 1 dereferenceable(64) [[S:%.*]], i64 64, i1 false)
+; CHECK-NEXT:    tail call void @llvm.memmove.p0.p0.i64(ptr noundef nonnull readonly align 1 dereferenceable(64) [[D:%.*]], ptr noundef nonnull readonly align 1 dereferenceable(64) [[S:%.*]], i64 64, i1 false)
 ; CHECK-NEXT:    ret ptr [[D]]
 ;
   %call = tail call ptr @memmove(ptr %d, ptr %s, i64 64)
@@ -121,7 +121,7 @@ define ptr @memmove_const_size_set_deref(ptr nocapture readonly %d, ptr nocaptur
 define ptr @memset_const_size_set_deref(ptr nocapture readonly %s, i32 %c) {
 ; CHECK-LABEL: @memset_const_size_set_deref(
 ; CHECK-NEXT:    [[TMP1:%.*]] = trunc i32 [[C:%.*]] to i8
-; CHECK-NEXT:    tail call void @llvm.memset.p0.i64(ptr noundef nonnull align 1 dereferenceable(64) [[S:%.*]], i8 [[TMP1]], i64 64, i1 false)
+; CHECK-NEXT:    tail call void @llvm.memset.p0.i64(ptr noundef nonnull readonly align 1 dereferenceable(64) [[S:%.*]], i8 [[TMP1]], i64 64, i1 false)
 ; CHECK-NEXT:    ret ptr [[S]]
 ;
   %call = tail call ptr @memset(ptr %s, i32 %c, i64 64)
@@ -130,7 +130,7 @@ define ptr @memset_const_size_set_deref(ptr nocapture readonly %s, i32 %c) {
 
 define ptr @memchr_const_size_set_deref(ptr nocapture readonly %s, i32 %c) {
 ; CHECK-LABEL: @memchr_const_size_set_deref(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call ptr @memchr(ptr noundef nonnull dereferenceable(1) [[S:%.*]], i32 [[C:%.*]], i64 64)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call ptr @memchr(ptr noundef nonnull readonly dereferenceable(1) [[S:%.*]], i32 [[C:%.*]], i64 64)
 ; CHECK-NEXT:    ret ptr [[CALL]]
 ;
   %call = tail call ptr @memchr(ptr %s, i32 %c, i64 64)
@@ -139,7 +139,7 @@ define ptr @memchr_const_size_set_deref(ptr nocapture readonly %s, i32 %c) {
 
 define ptr @llvm_memcpy_const_size_set_deref(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @llvm_memcpy_const_size_set_deref(
-; CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i64(ptr noundef nonnull align 1 dereferenceable(16) [[D:%.*]], ptr noundef nonnull align 1 dereferenceable(16) [[S:%.*]], i64 16, i1 false)
+; CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i64(ptr noundef nonnull readonly align 1 dereferenceable(16) [[D:%.*]], ptr noundef nonnull align 1 dereferenceable(16) [[S:%.*]], i64 16, i1 false)
 ; CHECK-NEXT:    ret ptr [[D]]
 ;
   call void @llvm.memcpy.p0.p0.i64(ptr align 1 %d, ptr align 1 %s, i64 16, i1 false)
@@ -148,7 +148,7 @@ define ptr @llvm_memcpy_const_size_set_deref(ptr nocapture readonly %d, ptr noca
 
 define ptr @llvm_memmove_const_size_set_deref(ptr nocapture readonly %d, ptr nocapture readonly %s) {
 ; CHECK-LABEL: @llvm_memmove_const_size_set_deref(
-; CHECK-NEXT:    call void @llvm.memmove.p0.p0.i64(ptr noundef nonnull align 1 dereferenceable(16) [[D:%.*]], ptr noundef nonnull align 1 dereferenceable(16) [[S:%.*]], i64 16, i1 false)
+; CHECK-NEXT:    call void @llvm.memmove.p0.p0.i64(ptr noundef nonnull readonly align 1 dereferenceable(16) [[D:%.*]], ptr noundef nonnull align 1 dereferenceable(16) [[S:%.*]], i64 16, i1 false)
 ; CHECK-NEXT:    ret ptr [[D]]
 ;
   call void @llvm.memmove.p0.p0.i64(ptr align 1 %d, ptr align 1 %s, i64 16, i1 false)
@@ -156,7 +156,7 @@ define ptr @llvm_memmove_const_size_set_deref(ptr nocapture readonly %d, ptr noc
 }
 define ptr @llvm_memset_const_size_set_deref(ptr nocapture readonly %s, i8 %c) {
 ; CHECK-LABEL: @llvm_memset_const_size_set_deref(
-; CHECK-NEXT:    call void @llvm.memset.p0.i64(ptr noundef nonnull align 1 dereferenceable(16) [[S:%.*]], i8 [[C:%.*]], i64 16, i1 false)
+; CHECK-NEXT:    call void @llvm.memset.p0.i64(ptr noundef nonnull readonly align 1 dereferenceable(16) [[S:%.*]], i8 [[C:%.*]], i64 16, i1 false)
 ; CHECK-NEXT:    ret ptr [[S]]
 ;
   call void @llvm.memset.p0.i64(ptr align 1 %s, i8 %c, i64 16, i1 false)

@@ -3,8 +3,8 @@
 
 define <3 x float> @PR52631(<3 x float> %a, <3 x float> %b, <3 x i32> %c) {
 ; CHECK-LABEL: @PR52631(
-; CHECK-NEXT:    [[ISNEG3:%.*]] = icmp slt <3 x i32> [[C:%.*]], zeroinitializer
-; CHECK-NEXT:    [[OR_V:%.*]] = select <3 x i1> [[ISNEG3]], <3 x float> [[B:%.*]], <3 x float> [[A:%.*]]
+; CHECK-NEXT:    [[ISNEG:%.*]] = icmp slt <3 x i32> [[C:%.*]], zeroinitializer
+; CHECK-NEXT:    [[OR_V:%.*]] = select <3 x i1> [[ISNEG]], <3 x float> [[B:%.*]], <3 x float> [[A:%.*]]
 ; CHECK-NEXT:    ret <3 x float> [[OR_V]]
 ;
   %a.addr = alloca <3 x float>, align 16
@@ -74,8 +74,8 @@ define <4 x i8> @allSignBits_vec(<4 x i8> %cond, <4 x i8> %tval, <4 x i8> %fval)
 define <4 x i32> @PR42100(<4 x i32> noundef %x, <4 x i32> noundef %min) {
 ; CHECK-LABEL: @PR42100(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[TMP0:%.*]] = tail call <4 x i32> @llvm.smin.v4i32(<4 x i32> [[X:%.*]], <4 x i32> [[MIN:%.*]])
-; CHECK-NEXT:    ret <4 x i32> [[TMP0]]
+; CHECK-NEXT:    [[SEL:%.*]] = tail call <4 x i32> @llvm.smin.v4i32(<4 x i32> noundef [[X:%.*]], <4 x i32> noundef [[MIN:%.*]]) #[[ATTR2:[0-9]+]]
+; CHECK-NEXT:    ret <4 x i32> [[SEL]]
 ;
 entry:
   br label %for.cond

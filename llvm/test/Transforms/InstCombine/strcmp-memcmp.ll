@@ -350,7 +350,7 @@ define i32 @strcmp_memcmp_bad3(ptr dereferenceable (12) %buf) nofree nosync {
 
 define i32 @strcmp_memcmp_bad4(ptr nocapture readonly %buf) nofree nosync {
 ; CHECK-LABEL: @strcmp_memcmp_bad4(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(4) @key, ptr noundef nonnull dereferenceable(1) [[BUF:%.*]])
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(4) @key, ptr noundef nonnull readonly dereferenceable(1) [[BUF:%.*]])
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 [[CALL]], 0
 ; CHECK-NEXT:    [[CONV:%.*]] = zext i1 [[CMP]] to i32
 ; CHECK-NEXT:    ret i32 [[CONV]]
@@ -377,7 +377,7 @@ define i32 @strcmp_memcmp_bad5(ptr dereferenceable (3) %buf) nofree nosync {
 
 define i32 @strcmp_memcmp_bad6(ptr dereferenceable (4) %buf, ptr nocapture readonly %k) nofree nosync {
 ; CHECK-LABEL: @strcmp_memcmp_bad6(
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @strcmp(ptr noundef nonnull dereferenceable(1) [[BUF:%.*]], ptr noundef nonnull dereferenceable(1) [[K:%.*]])
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @strcmp(ptr noundef nonnull dereferenceable(1) [[BUF:%.*]], ptr noundef nonnull readonly dereferenceable(1) [[K:%.*]])
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 [[CALL]], 0
 ; CHECK-NEXT:    [[CONV:%.*]] = zext i1 [[CMP]] to i32
 ; CHECK-NEXT:    ret i32 [[CONV]]
@@ -390,7 +390,7 @@ define i32 @strcmp_memcmp_bad6(ptr dereferenceable (4) %buf, ptr nocapture reado
 
 define i32 @strcmp_memcmp_bad7(ptr nocapture readonly %k) nofree nosync {
 ; CHECK-LABEL: @strcmp_memcmp_bad7(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(4) @key, ptr noundef nonnull dereferenceable(1) [[K:%.*]])
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(4) @key, ptr noundef nonnull readonly dereferenceable(1) [[K:%.*]])
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 [[CALL]], 0
 ; CHECK-NEXT:    [[CONV:%.*]] = zext i1 [[CMP]] to i32
 ; CHECK-NEXT:    ret i32 [[CONV]]
@@ -454,7 +454,7 @@ define i32 @strncmp_memcmp_bad2(ptr dereferenceable (12) %buf, i64 %n) nofree no
 
 define i32 @strncmp_memcmp_bad3(ptr nocapture readonly %k) nofree nosync {
 ; CHECK-LABEL: @strncmp_memcmp_bad3(
-; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @strncmp(ptr noundef nonnull dereferenceable(4) @key, ptr noundef nonnull dereferenceable(1) [[K:%.*]], i64 2)
+; CHECK-NEXT:    [[CALL:%.*]] = tail call i32 @strncmp(ptr noundef nonnull dereferenceable(4) @key, ptr noundef nonnull readonly dereferenceable(1) [[K:%.*]], i64 2)
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 [[CALL]], 0
 ; CHECK-NEXT:    [[CONV:%.*]] = zext i1 [[CMP]] to i32
 ; CHECK-NEXT:    ret i32 [[CONV]]
