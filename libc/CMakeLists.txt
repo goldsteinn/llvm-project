@@ -17,14 +17,20 @@ set(LIBC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 # The top-level directory in which libc is being built.
 set(LIBC_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
-if(LLVM_ENABLE_PER_TARGET_RUNTIME_DIR)
-  set(LIBC_LIBRARY_DIR ${LLVM_LIBRARY_OUTPUT_INTDIR}/${LLVM_DEFAULT_TARGET_TRIPLE})
-else()
-  if(LLVM_LIBRARY_OUTPUT_INTDIR)
-    set(LIBC_LIBRARY_DIR ${LLVM_LIBRARY_OUTPUT_INTDIR})
+# If LLVM_LIBC_MAKE_DISCOVERABLE is ON, we place libraries on path so
+# that clang will use it.
+if(LLVM_LIBC_MAKE_DISCOVERABLE)
+  if(LLVM_ENABLE_PER_TARGET_RUNTIME_DIR)
+    set(LIBC_LIBRARY_DIR ${LLVM_LIBRARY_OUTPUT_INTDIR}/${LLVM_DEFAULT_TARGET_TRIPLE})
   else()
-    set(LIBC_LIBRARY_DIR ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX})
+    if(LLVM_LIBRARY_OUTPUT_INTDIR)
+      set(LIBC_LIBRARY_DIR ${LLVM_LIBRARY_OUTPUT_INTDIR})
+    else()
+      set(LIBC_LIBRARY_DIR ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX})
+    endif()
   endif()
+else()
+  set(LIBC_LIBRARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 if(LLVM_LIBC_FULL_BUILD OR LIBC_GPU_BUILD OR LIBC_GPU_ARCHITECTURES)
@@ -38,7 +44,7 @@ if(LLVM_LIBC_FULL_BUILD OR LIBC_GPU_BUILD OR LIBC_GPU_ARCHITECTURES)
 endif()
 
 option(LIBC_HDRGEN_ONLY "Only build the 'libc-hdrgen' executable" OFF)
-if(("libc" IN_LIST LLVM_ENABLE_RUNTIMES AND NOT LLVM_RUNTIMES_BUILD) OR 
+if(("libc" IN_LIST LLVM_ENABLE_RUNTIMES AND NOT LLVM_RUNTIMES_BUILD) OR
    LIBC_HDRGEN_ONLY)
   # When libc is build as part of the runtimes/bootstrap build's CMake run, we
   # only need to build the host tools to build the libc. So, we just do enough
