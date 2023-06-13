@@ -730,6 +730,142 @@ static Value *tryFactorization(BinaryOperator &I, const SimplifyQuery &SQ,
   return RetVal;
 }
 
+// (Binop1 (Binop2 (logic_shift X, C), C1), (logic_shift Y, C))
+//   IFF
+//    1) the logic_shifts match
+//    2) either both binops are binops and one is `and` or
+//       BinOp1 is `and`
+//       (logic_shift (inv_logic_shift C1, C), C) == C1 or
+//
+//    -> (logic_shift (Binop1 (Binop2 X, inv_logic_shift(C1, C)), Y), C)
+//
+// (Binop1 (Binop2 (logic_shift X, Amt), Mask), (logic_shift Y, Amt))
+//   IFF
+//    1) the logic_shifts match
+//    2) BinOp1 == BinOp2 (if BinOp ==  `add`, then also requires `shl`).
+//
+//    -> (BinOp (logic_shift (BinOp X, Y)), Mask)
+Instruction *InstCombinerImpl::foldBinOpShiftWithShift(BinaryOperator &I) {
+  auto IsValidBinOpc = [](unsigned Opc) {
+    switch (Opc) {
+    default:
+      return false;
+    case Instruction::And:
+    case Instruction::Or:
+    case Instruction::Xor:
+    case Instruction::Add:
+      // Skip Sub as we only match constant masks which will canonicalize to use
+      // add.
+      return true;
+    }
+  };
+
+  // Check if we can distribute binop arbitrarily. `add` + `lshr` has extra
+  // constraints.
+  auto IsCompletelyDistributable = [](unsigned BinOpc1, unsigned BinOpc2,
+                                      unsigned ShOpc) {
+    return (BinOpc1 != Instruction::Add && BinOpc2 != Instruction::Add) ||
+           ShOpc == Instruction::Shl;
+  };
+
+  auto GetInvShift = [](unsigned ShOpc) {
+    return ShOpc == Instruction::LShr ? Instruction::Shl : Instruction::LShr;
+  };
+
+  auto CanDistributeBinops = [&](unsigned BinOpc1, unsigned BinOpc2,
+                                 unsigned ShOpc, Constant *CMask,
+                                 Constant *CShift) {
+    // If the BinOp1 is `and` we don't need to check the mask.
+    if (BinOpc1 == Instruction::And)
+      return true;
+
+    // For all other possible transfers we need complete distributable
+    // binop/shift (anything but `add` + `lshr`).
+    if (!IsCompletelyDistributable(BinOpc1, BinOpc2, ShOpc))
+      return false;
+
+    // If BinOp2 is `and`, any mask works (this only really helps for non-splat
+    // vecs, otherwise the mask will be simplified and the following check will
+    // handle it).
+    if (BinOpc2 == Instruction::And)
+      return true;
+
+    // Otherwise, need mask that meets the below requirement.
+    // (logic_shift (inv_logic_shift Mask, ShAmt), ShAmt) == Mask
+    return ConstantExpr::get(
+               ShOpc, ConstantExpr::get(GetInvShift(ShOpc), CMask, CShift),
+               CShift) == CMask;
+  };
+
+  auto MatchBinOp = [&](unsigned ShOpnum) -> Instruction * {
+    Constant *CMask, *CShift;
+    Value *X, *Y, *ShiftedX, *Mask, *Shift;
+    if (!match(I.getOperand(ShOpnum),
+               m_OneUse(m_LogicalShift(m_Value(Y), m_Value(Shift)))))
+      return nullptr;
+    if (!match(I.getOperand(1 - ShOpnum),
+               m_BinOp(m_Value(ShiftedX), m_Value(Mask))))
+      return nullptr;
+
+    if (!match(ShiftedX,
+               m_OneUse(m_LogicalShift(m_Value(X), m_Specific(Shift)))))
+      return nullptr;
+
+    // Make sure we are matching instruction shifts and not ConstantExpr
+    auto *IY = dyn_cast<Instruction>(I.getOperand(ShOpnum));
+    auto *IX = dyn_cast<Instruction>(ShiftedX);
+    if (!IY || !IX)
+      return nullptr;
+
+    // LHS and RHS need same shift opcode
+    unsigned ShOpc = IY->getOpcode();
+    if (ShOpc != IX->getOpcode())
+      return nullptr;
+
+    // Make sure binop is real instruction and not ConstantExpr
+    auto *BO2 = dyn_cast<Instruction>(I.getOperand(1 - ShOpnum));
+    if (!BO2)
+      return nullptr;
+
+    unsigned BinOpc = BO2->getOpcode();
+    // Make sure we have valid binops.
+    if (!IsValidBinOpc(I.getOpcode()) || !IsValidBinOpc(BinOpc))
+      return nullptr;
+
+    // If BinOp1 == BinOp2 and it's bitwise or shl with add, then just
+    // distribute to drop the shift irrelevant of constants.
+    if (BinOpc == I.getOpcode() &&
+        IsCompletelyDistributable(I.getOpcode(), BinOpc, ShOpc)) {
+      Value *NewBinOp2 = Builder.CreateBinOp(I.getOpcode(), X, Y);
+      Value *NewBinOp1 = Builder.CreateBinOp(
+          static_cast<Instruction::BinaryOps>(ShOpc), NewBinOp2, Shift);
+      return BinaryOperator::Create(I.getOpcode(), NewBinOp1, Mask);
+    }
+
+    // Otherwise we can only distribute by constant shifting the mask, so
+    // ensure we have constants.
+    if (!match(Shift, m_ImmConstant(CShift)))
+      return nullptr;
+    if (!match(Mask, m_ImmConstant(CMask)))
+      return nullptr;
+
+    // Check if we can distribute the binops.
+    if (!CanDistributeBinops(I.getOpcode(), BinOpc, ShOpc, CMask, CShift))
+      return nullptr;
+
+    Constant *NewCMask = ConstantExpr::get(GetInvShift(ShOpc), CMask, CShift);
+    Value *NewBinOp2 = Builder.CreateBinOp(
+        static_cast<Instruction::BinaryOps>(BinOpc), X, NewCMask);
+    Value *NewBinOp1 = Builder.CreateBinOp(I.getOpcode(), Y, NewBinOp2);
+    return BinaryOperator::Create(static_cast<Instruction::BinaryOps>(ShOpc),
+                                  NewBinOp1, CShift);
+  };
+
+  if (Instruction *R = MatchBinOp(0))
+    return R;
+  return MatchBinOp(1);
+}
+
 Value *InstCombinerImpl::tryFactorizationFolds(BinaryOperator &I) {
   Value *LHS = I.getOperand(0), *RHS = I.getOperand(1);
   BinaryOperator *Op0 = dyn_cast<BinaryOperator>(LHS);
@@ -3767,55 +3903,65 @@ bool InstCombinerImpl::run() {
     LLVM_DEBUG(raw_string_ostream SS(OrigI); I->print(SS); OrigI = SS.str(););
     LLVM_DEBUG(dbgs() << "IC: Visiting: " << OrigI << '\n');
 
-    if (Instruction *Result = visit(*I)) {
-      ++NumCombined;
-      // Should we replace the old instruction with a new one?
-      if (Result != I) {
-        LLVM_DEBUG(dbgs() << "IC: Old = " << *I << '\n'
-                          << "    New = " << *Result << '\n');
+    while (I != nullptr) {
+      if (Instruction *Result = visit(*I)) {
+        ++NumCombined;
+        // Should we replace the old instruction with a new one?
+        if (Result != I) {
+          LLVM_DEBUG(dbgs() << "IC: Old = " << *I << '\n'
+                            << "    New = " << *Result << '\n');
 
-        Result->copyMetadata(*I,
-                             {LLVMContext::MD_dbg, LLVMContext::MD_annotation});
-        // Everything uses the new instruction now.
-        I->replaceAllUsesWith(Result);
+          Result->copyMetadata(
+              *I, {LLVMContext::MD_dbg, LLVMContext::MD_annotation});
+          // Everything uses the new instruction now.
+          I->replaceAllUsesWith(Result);
 
-        // Move the name to the new instruction first.
-        Result->takeName(I);
+          // Move the name to the new instruction first.
+          Result->takeName(I);
 
-        // Insert the new instruction into the basic block...
-        BasicBlock *InstParent = I->getParent();
-        BasicBlock::iterator InsertPos = I->getIterator();
+          // Insert the new instruction into the basic block...
+          BasicBlock *InstParent = I->getParent();
+          BasicBlock::iterator InsertPos = I->getIterator();
 
-        // Are we replace a PHI with something that isn't a PHI, or vice versa?
-        if (isa<PHINode>(Result) != isa<PHINode>(I)) {
-          // We need to fix up the insertion point.
-          if (isa<PHINode>(I)) // PHI -> Non-PHI
-            InsertPos = InstParent->getFirstInsertionPt();
-          else // Non-PHI -> PHI
-            InsertPos = InstParent->getFirstNonPHI()->getIterator();
-        }
+          // Are we replace a PHI with something that isn't a PHI, or vice
+          // versa?
+          if (isa<PHINode>(Result) != isa<PHINode>(I)) {
+            // We need to fix up the insertion point.
+            if (isa<PHINode>(I)) // PHI -> Non-PHI
+              InsertPos = InstParent->getFirstInsertionPt();
+            else // Non-PHI -> PHI
+              InsertPos = InstParent->getFirstNonPHI()->getIterator();
+          }
 
-        Result->insertInto(InstParent, InsertPos);
+          Result->insertInto(InstParent, InsertPos);
 
-        // Push the new instruction and any users onto the worklist.
-        Worklist.pushUsersToWorkList(*Result);
-        Worklist.push(Result);
+          // Push the new instruction and any users onto the worklist.
+          Worklist.pushUsersToWorkList(*Result);
+          //Worklist.push(Result);
 
-        eraseInstFromFunction(*I);
-      } else {
-        LLVM_DEBUG(dbgs() << "IC: Mod = " << OrigI << '\n'
-                          << "    New = " << *I << '\n');
-
-        // If the instruction was modified, it's possible that it is now dead.
-        // if so, remove it.
-        if (isInstructionTriviallyDead(I, &TLI)) {
           eraseInstFromFunction(*I);
+          I = Result;
         } else {
-          Worklist.pushUsersToWorkList(*I);
-          Worklist.push(I);
+          LLVM_DEBUG(dbgs() << "IC: Mod = " << OrigI << '\n'
+                            << "    New = " << *I << '\n');
+
+          // If the instruction was modified, it's possible that it is now dead.
+          // if so, remove it.
+          if (isInstructionTriviallyDead(I, &TLI)) {
+            eraseInstFromFunction(*I);
+            I = nullptr;
+          } else {
+            Worklist.pushUsersToWorkList(*I);
+            //    Worklist.push(I);
+            I = Result;
+          }
         }
+
+        MadeIRChange = true;
       }
-      MadeIRChange = true;
+      else {
+          I = nullptr;
+      }
     }
   }
 
