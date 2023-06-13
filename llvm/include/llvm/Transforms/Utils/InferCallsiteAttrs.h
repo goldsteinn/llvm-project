@@ -13,7 +13,7 @@ class InferCallsiteAttrs {
 
   // Limit maximum amount of instructions we will check. Everything is O(1) so
   // relatively high value is okay.
-  static constexpr unsigned kMaxChecks = 100;
+  static constexpr unsigned kMaxChecks = 10;
 
   struct FunctionInfos {
     uint8_t LandingOrEHPad : 2;
