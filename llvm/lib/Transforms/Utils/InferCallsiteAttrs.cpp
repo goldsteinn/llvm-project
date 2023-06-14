@@ -573,14 +573,18 @@ bool InferCallsiteAttrs::tryMemoryPropagations(CallBase *CB) {
   };
 
   bool Changed = false;
-  MemoryEffects CBMemEffects = CB->getMemoryEffects();
-
-  auto SetMemoryEffectsAndRetChanged = [&]() {
+  //  MemoryEffects CBMemEffects = CB->getMemoryEffects();
+#if 0
+  auto SetMemoryEffectsAndRetChanged = [Changed, CB, CBMemEffects]() {
     if (Changed)
       CB->setMemoryEffects(CBMemEffects);
     return Changed;
   };
-
+#else
+  auto SetMemoryEffectsAndRetChanged = [Changed]() {
+      return Changed;
+  };
+#endif
   // If the callsite has no local memory visible to it, then it shares
   // constraints with the caller as any pointer is has access too is shared
   // with the caller. For readnone, readonly, and writeonly simple not alloca
@@ -588,53 +592,59 @@ bool InferCallsiteAttrs::tryMemoryPropagations(CallBase *CB) {
   // absolutely no local memory as otherwise we could nest caller local memory
   // in argument pointers then use that derefed caller local memory in the
   // callsite violating the constraint.
-  if (checkCallerDoesNotAccessMemory() && !CBMemEffects.doesNotAccessMemory()) {
+  if (checkCallerDoesNotAccessMemory() && !CB->doesNotAccessMemory()) {
     // Wait until we know we actually need it to do potentially expensive
     // analysis.
     if (!MayHaveLocalMemoryArgs())
       return SetMemoryEffectsAndRetChanged();
 
     // If we have access none, we won't propagate anything else.
-    CBMemEffects = MemoryEffects::none();
+    //    CBMemEffects = MemoryEffects::none();
+    CB->setDoesNotAccessMemory();
     return SetMemoryEffectsAndRetChanged();
   }
-  if (checkCallerOnlyReadsMemory() && !CBMemEffects.onlyReadsMemory()) {
+  if (checkCallerOnlyReadsMemory() && !CB->onlyReadsMemory()) {
     if (!MayHaveLocalMemoryArgs())
       return SetMemoryEffectsAndRetChanged();
 
-    CBMemEffects &= MemoryEffects::readOnly();
+    //    CBMemEffects &= MemoryEffects::readOnly();
+    CB->setOnlyReadsMemory();
     Changed = true;
   }
-  if (checkCallerOnlyWritesMemory() && !CBMemEffects.onlyWritesMemory()) {
+  if (checkCallerOnlyWritesMemory() && !CB->onlyWritesMemory()) {
     if (!MayHaveLocalMemoryArgs())
       return SetMemoryEffectsAndRetChanged();
-    CBMemEffects &= MemoryEffects::writeOnly();
+    //    CBMemEffects &= MemoryEffects::writeOnly();
+    CB->setOnlyWritesMemory();
     Changed = true;
   }
 
   if (checkCallerOnlyAccessesArgMemory() &&
-      !CBMemEffects.onlyAccessesArgPointees()) {
+      !CB->onlyAccessesArgMemory()) {
     // Switch to heavier check here.
     // TODO: We may be able to do some analysis of if any of the allocas are
     // ever stored anywhere (if thats not the case, then just argument memory
     // is enough again).
     if (!MayHavePrecedingLocalMemory())
       return SetMemoryEffectsAndRetChanged();
-    CBMemEffects &= MemoryEffects::argMemOnly();
+    //    CBMemEffects &= MemoryEffects::argMemOnly();
+    CB->setOnlyAccessesArgMemory();
     Changed = true;
   }
   if (checkCallerOnlyAccessesInaccessibleMemory() &&
-      !CBMemEffects.onlyAccessesInaccessibleMem()) {
+      !CB->onlyAccessesInaccessibleMemory()) {
     if (!MayHavePrecedingLocalMemory())
       return SetMemoryEffectsAndRetChanged();
-    CBMemEffects &= MemoryEffects::inaccessibleMemOnly();
+    //    CBMemEffects &= MemoryEffects::inaccessibleMemOnly();
+    CB->setOnlyAccessesInaccessibleMemory();
     Changed = true;
   }
   if (checkCallerOnlyAccessesInaccessibleMemOrArgMem() &&
-      !CBMemEffects.onlyAccessesInaccessibleOrArgMem()) {
+      !CB->onlyAccessesInaccessibleMemOrArgMem()) {
     if (!MayHavePrecedingLocalMemory())
       return SetMemoryEffectsAndRetChanged();
-    CBMemEffects &= MemoryEffects::inaccessibleOrArgMemOnly();
+    //    CBMemEffects &= MemoryEffects::inaccessibleOrArgMemOnly();
+    CB->setOnlyAccessesInaccessibleMemOrArgMem();
     Changed = true;
   }
 

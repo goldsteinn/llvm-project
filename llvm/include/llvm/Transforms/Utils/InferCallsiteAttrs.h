@@ -83,6 +83,7 @@ class InferCallsiteAttrs {
   bool checkCallerDoesNotThrow() const {
     return (CxtCB && CxtCB->doesNotThrow()) || Caller->doesNotThrow();
   }
+#if 0    
   bool checkCallerDoesNotAccessMemory() const {
     return (CxtCB && CxtCBMemEffects.doesNotAccessMemory()) ||
            CallerMemEffects.doesNotAccessMemory();
@@ -107,6 +108,30 @@ class InferCallsiteAttrs {
     return (CxtCB && CxtCBMemEffects.onlyAccessesInaccessibleOrArgMem()) ||
            CallerMemEffects.onlyAccessesInaccessibleOrArgMem();
   }
+#else
+  bool checkCallerDoesNotAccessMemory() const {
+    return (CxtCB && CxtCB->doesNotAccessMemory()) ||
+           Caller->doesNotAccessMemory();
+  };
+  bool checkCallerOnlyReadsMemory() const {
+    return (CxtCB && CxtCB->onlyReadsMemory()) || Caller->onlyReadsMemory();
+  };
+  bool checkCallerOnlyWritesMemory() const {
+    return (CxtCB && CxtCB->onlyWritesMemory()) || Caller->onlyWritesMemory();
+  };
+  bool checkCallerOnlyAccessesArgMemory() const {
+    return (CxtCB && CxtCB->onlyAccessesArgMemory()) ||
+           Caller->onlyAccessesArgMemory();
+  };
+  bool checkCallerOnlyAccessesInaccessibleMemory() const {
+    return (CxtCB && CxtCB->onlyAccessesInaccessibleMemory()) ||
+           Caller->onlyAccessesInaccessibleMemory();
+  };
+  bool checkCallerOnlyAccessesInaccessibleMemOrArgMem() const {
+    return (CxtCB && CxtCB->onlyAccessesInaccessibleMemOrArgMem()) ||
+           Caller->onlyAccessesInaccessibleMemOrArgMem();
+  };
+#endif
 
   // Check all instructions between callbase and end of basicblock (if that
   // basic block ends in a return). This will cache the analysis information.
