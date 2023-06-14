@@ -22,6 +22,8 @@
 
 namespace llvm {
 class InferCallsiteAttrs {
+
+  static constexpr unsigned kMaxCnt = 200;
   enum : uint8_t { kMaybe = 0, kYes = 1, kNo = 2 };
 
   struct FunctionInfos {
@@ -59,11 +61,21 @@ class InferCallsiteAttrs {
   CallsiteInfos CurCBInfo;
   struct FunctionInfos CurFnInfo;
   bool PreserveCache;
+  unsigned Cnt;
+
+  bool PastMaxChecks() { return Cnt++ > kMaxCnt; }
 
   void initCallerMemoryEffects() {
     CallerMemEffects = Caller->getMemoryEffects();
     if (CxtCB)
       CxtCBMemEffects = CxtCB->getMemoryEffects();
+  }
+
+  void initCaller(const Function *ParentFunc, const CallBase *ParentCallsite) {
+    Caller = ParentFunc;
+    CxtCB = ParentCallsite;
+    Cnt = 0;
+    initCallerMemoryEffects();
   }
 
   // Wrapper for attribute checks that check both the context callsite and
@@ -83,7 +95,6 @@ class InferCallsiteAttrs {
   bool checkCallerDoesNotThrow() const {
     return (CxtCB && CxtCB->doesNotThrow()) || Caller->doesNotThrow();
   }
-#if 0    
   bool checkCallerDoesNotAccessMemory() const {
     return (CxtCB && CxtCBMemEffects.doesNotAccessMemory()) ||
            CallerMemEffects.doesNotAccessMemory();
@@ -108,30 +119,6 @@ class InferCallsiteAttrs {
     return (CxtCB && CxtCBMemEffects.onlyAccessesInaccessibleOrArgMem()) ||
            CallerMemEffects.onlyAccessesInaccessibleOrArgMem();
   }
-#else
-  bool checkCallerDoesNotAccessMemory() const {
-    return (CxtCB && CxtCB->doesNotAccessMemory()) ||
-           Caller->doesNotAccessMemory();
-  };
-  bool checkCallerOnlyReadsMemory() const {
-    return (CxtCB && CxtCB->onlyReadsMemory()) || Caller->onlyReadsMemory();
-  };
-  bool checkCallerOnlyWritesMemory() const {
-    return (CxtCB && CxtCB->onlyWritesMemory()) || Caller->onlyWritesMemory();
-  };
-  bool checkCallerOnlyAccessesArgMemory() const {
-    return (CxtCB && CxtCB->onlyAccessesArgMemory()) ||
-           Caller->onlyAccessesArgMemory();
-  };
-  bool checkCallerOnlyAccessesInaccessibleMemory() const {
-    return (CxtCB && CxtCB->onlyAccessesInaccessibleMemory()) ||
-           Caller->onlyAccessesInaccessibleMemory();
-  };
-  bool checkCallerOnlyAccessesInaccessibleMemOrArgMem() const {
-    return (CxtCB && CxtCB->onlyAccessesInaccessibleMemOrArgMem()) ||
-           Caller->onlyAccessesInaccessibleMemOrArgMem();
-  };
-#endif
 
   // Check all instructions between callbase and end of basicblock (if that
   // basic block ends in a return). This will cache the analysis information.

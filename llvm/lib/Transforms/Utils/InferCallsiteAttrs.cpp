@@ -104,6 +104,9 @@ bool InferCallsiteAttrs::checkBetweenCallsiteAndReturn(
   for (const Instruction *Ins = CB->getNextNode(); Ins && Ins != RI;
        Ins = Ins->getNextNode()) {
 
+    if (PastMaxChecks())
+      return false;
+
     if (Ins->mayWriteToMemory()) {
       CurCBInfo.StoresBetweenReturn = kYes;
       if (BailOnStore)
@@ -194,6 +197,8 @@ bool InferCallsiteAttrs::checkPrecedingBBIns(const CallBase *CB,
           // We only know there is a malloc instruction, not where so iterate
           // and find.
           for (const Value &Val : *BB) {
+            if (PastMaxChecks())
+              break;
             if (isCallLocalNoaliasLike(&Val, CB)) {
               CurCBInfo.PrecedingLocalNoalias = kYes;
               break;
@@ -219,6 +224,9 @@ bool InferCallsiteAttrs::checkPrecedingBBIns(const CallBase *CB,
         EarlyOut = CurCBInfo.IsLastInsBeforeReturn != kYes;
         break;
       }
+
+      if (PastMaxChecks())
+        return false;
 
       if (isa<AllocaInst>(&V))
         BBInfo.Alloca = kYes;
@@ -259,6 +267,8 @@ bool InferCallsiteAttrs::checkAllBBs(bool BailOnPad) {
     return false;
 
   for (const BasicBlock &CurBB : *Caller) {
+    if (PastMaxChecks())
+      return false;
     if (CurBB.isEHPad() || CurBB.isLandingPad()) {
       CurFnInfo.LandingOrEHPad = kYes;
       if (BailOnPad)
@@ -415,11 +425,17 @@ bool InferCallsiteAttrs::tryPropagateNoCapture(CallBase *CB) {
       // Figure out of the load is derived from the return of the callsite. If
       // so we assume its a captured pointer.
       SmallPtrSet<const Value *, 16> DerivedFromReturn;
-      for (const Value *U : CB->uses())
+      for (const Value *U : CB->uses()) {
+        if (PastMaxChecks())
+          return false;
         DerivedFromReturn.insert(U);
+
+      }
 
       for (const Instruction *Ins = CB; Ins && Ins != RI;
            Ins = Ins->getNextNode()) {
+        if (PastMaxChecks())
+          return false;
         for (const Value *U : Ins->operands()) {
           if (DerivedFromReturn.contains(U)) {
             DerivedFromReturn.insert(Ins);
@@ -573,18 +589,14 @@ bool InferCallsiteAttrs::tryMemoryPropagations(CallBase *CB) {
   };
 
   bool Changed = false;
-  //  MemoryEffects CBMemEffects = CB->getMemoryEffects();
-#if 0
-  auto SetMemoryEffectsAndRetChanged = [Changed, CB, CBMemEffects]() {
+  MemoryEffects CBMemEffects = CB->getMemoryEffects();
+
+  auto SetMemoryEffectsAndRetChanged = [&]() {
     if (Changed)
       CB->setMemoryEffects(CBMemEffects);
     return Changed;
   };
-#else
-  auto SetMemoryEffectsAndRetChanged = [Changed]() {
-      return Changed;
-  };
-#endif
+
   // If the callsite has no local memory visible to it, then it shares
   // constraints with the caller as any pointer is has access too is shared
   // with the caller. For readnone, readonly, and writeonly simple not alloca
@@ -592,59 +604,53 @@ bool InferCallsiteAttrs::tryMemoryPropagations(CallBase *CB) {
   // absolutely no local memory as otherwise we could nest caller local memory
   // in argument pointers then use that derefed caller local memory in the
   // callsite violating the constraint.
-  if (checkCallerDoesNotAccessMemory() && !CB->doesNotAccessMemory()) {
+  if (checkCallerDoesNotAccessMemory() && !CBMemEffects.doesNotAccessMemory()) {
     // Wait until we know we actually need it to do potentially expensive
     // analysis.
     if (!MayHaveLocalMemoryArgs())
       return SetMemoryEffectsAndRetChanged();
 
     // If we have access none, we won't propagate anything else.
-    //    CBMemEffects = MemoryEffects::none();
-    CB->setDoesNotAccessMemory();
+    CBMemEffects = MemoryEffects::none();
     return SetMemoryEffectsAndRetChanged();
   }
-  if (checkCallerOnlyReadsMemory() && !CB->onlyReadsMemory()) {
+  if (checkCallerOnlyReadsMemory() && !CBMemEffects.onlyReadsMemory()) {
     if (!MayHaveLocalMemoryArgs())
       return SetMemoryEffectsAndRetChanged();
 
-    //    CBMemEffects &= MemoryEffects::readOnly();
-    CB->setOnlyReadsMemory();
+    CBMemEffects &= MemoryEffects::readOnly();
     Changed = true;
   }
-  if (checkCallerOnlyWritesMemory() && !CB->onlyWritesMemory()) {
+  if (checkCallerOnlyWritesMemory() && !CBMemEffects.onlyWritesMemory()) {
     if (!MayHaveLocalMemoryArgs())
       return SetMemoryEffectsAndRetChanged();
-    //    CBMemEffects &= MemoryEffects::writeOnly();
-    CB->setOnlyWritesMemory();
+    CBMemEffects &= MemoryEffects::writeOnly();
     Changed = true;
   }
 
   if (checkCallerOnlyAccessesArgMemory() &&
-      !CB->onlyAccessesArgMemory()) {
+      !CBMemEffects.onlyAccessesArgPointees()) {
     // Switch to heavier check here.
     // TODO: We may be able to do some analysis of if any of the allocas are
     // ever stored anywhere (if thats not the case, then just argument memory
     // is enough again).
     if (!MayHavePrecedingLocalMemory())
       return SetMemoryEffectsAndRetChanged();
-    //    CBMemEffects &= MemoryEffects::argMemOnly();
-    CB->setOnlyAccessesArgMemory();
+    CBMemEffects &= MemoryEffects::argMemOnly();
     Changed = true;
   }
   if (checkCallerOnlyAccessesInaccessibleMemory() &&
-      !CB->onlyAccessesInaccessibleMemory()) {
+      !CBMemEffects.onlyAccessesInaccessibleMem()) {
     if (!MayHavePrecedingLocalMemory())
       return SetMemoryEffectsAndRetChanged();
-    //    CBMemEffects &= MemoryEffects::inaccessibleMemOnly();
-    CB->setOnlyAccessesInaccessibleMemory();
+    CBMemEffects &= MemoryEffects::inaccessibleMemOnly();
     Changed = true;
   }
   if (checkCallerOnlyAccessesInaccessibleMemOrArgMem() &&
-      !CB->onlyAccessesInaccessibleMemOrArgMem()) {
+      !CBMemEffects.onlyAccessesInaccessibleOrArgMem()) {
     if (!MayHavePrecedingLocalMemory())
       return SetMemoryEffectsAndRetChanged();
-    //    CBMemEffects &= MemoryEffects::inaccessibleOrArgMemOnly();
-    CB->setOnlyAccessesInaccessibleMemOrArgMem();
+    CBMemEffects &= MemoryEffects::inaccessibleOrArgMemOnly();
     Changed = true;
   }
 
@@ -679,8 +685,7 @@ bool InferCallsiteAttrs::inferCallsiteAttributes(CallBase *CB,
   // Setup caching state
 
   CurFnInfo = FunctionInfos[PF];
-  Caller = PF;
-  CxtCB = CxtCallsite;
+  initCaller(PF, CxtCallsite);
   initCallerMemoryEffects();
   bool Changed = inferCallsiteAttributesImpl(CB);
 
@@ -697,8 +702,7 @@ bool InferCallsiteAttrs::processFunction(Function *ParentFunc,
     CurFnInfo = FunctionInfos[ParentFunc];
   else
     memset(&CurFnInfo, kMaybe, sizeof(CurFnInfo));
-  Caller = ParentFunc;
-  CxtCB = ParentCallsite;
+  initCaller(ParentFunc, ParentCallsite);
   initCallerMemoryEffects();
   for (BasicBlock &BB : *ParentFunc) {
     if (BB.isEHPad() || BB.isLandingPad())
