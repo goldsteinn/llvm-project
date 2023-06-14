@@ -23,7 +23,7 @@
 namespace llvm {
 class InferCallsiteAttrs {
 
-  static constexpr unsigned kMaxCnt = 200;
+  static constexpr unsigned kMaxCnt = 50;
   enum : uint8_t { kMaybe = 0, kYes = 1, kNo = 2 };
 
   struct FunctionInfos {
