@@ -57,6 +57,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO.h"
+#include "llvm/Transforms/Utils/InferCallsiteAttrs.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include <cassert>
 #include <iterator>
@@ -1745,7 +1746,7 @@ deriveAttrsInPostOrder(ArrayRef<Function *> Functions, AARGetterT &&AARGetter) {
     addNoRecurseAttrs(Nodes.SCCNodes, Changed);
   }
 
-  // Finally, infer the maximal set of attributes from the ones we've inferred
+  // Infer the maximal set of attributes from the ones we've inferred
   // above.  This is handling the cases where one attribute on a signature
   // implies another, but for implementation reasons the inference rule for
   // the later is missing (or simply less sophisticated).
@@ -1753,6 +1754,15 @@ deriveAttrsInPostOrder(ArrayRef<Function *> Functions, AARGetterT &&AARGetter) {
     if (F)
       if (inferAttributesFromOthers(*F))
         Changed.insert(F);
+
+  // Finally, propagate the functions attributes to all the callsites inside of
+  // it.
+  InferCallsiteAttrs ICA;
+  for (Function *F : Nodes.SCCNodes) {
+    if (F)
+      if (ICA.processFunction(F))
+        Changed.insert(F);
+  }
 
   return Changed;
 }
