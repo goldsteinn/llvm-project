@@ -1882,10 +1882,38 @@ AttrBuilder &AttrBuilder::addInAllocaAttr(Type *Ty) {
 }
 
 AttrBuilder &AttrBuilder::merge(const AttrBuilder &B) {
-  // TODO: Could make this O(n) as we're merging two sorted lists.
-  for (const auto &I : B.attrs())
-    addAttribute(I);
+  auto AAttrs = Attrs;
+  Attrs.clear();
+  Attrs.reserve(std::max(AAttrs.size(), B.attrs().size()) + 1);
 
+  auto ABegin = AAttrs.begin();
+  auto AEnd = AAttrs.end();
+  auto BBegin = B.Attrs.begin();
+  auto BEnd = B.Attrs.end();
+
+  auto Comp = AttributeComparator();
+  while (true) {
+    if (ABegin == AEnd) {
+      std::copy(BBegin, BEnd, std::back_inserter(Attrs));
+      break;
+    }
+    if (BBegin == BEnd) {
+      std::copy(ABegin, AEnd, std::back_inserter(Attrs));
+      break;
+    }
+    if (Comp(*ABegin, *BBegin)) {
+      Attrs.emplace_back(*ABegin);
+      ++ABegin;
+    } else {
+      if (BBegin->isStringAttribute()
+              ? ABegin->hasAttribute(BBegin->getKindAsString())
+              : ABegin->hasAttribute(BBegin->getKindAsEnum())) {
+        ++ABegin;
+      }
+      Attrs.emplace_back(*BBegin);
+      ++BBegin;
+    }
+  }
   return *this;
 }
 
