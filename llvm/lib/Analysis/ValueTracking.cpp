@@ -1448,7 +1448,7 @@ static void computeKnownBitsFromOperator(const Operator *I,
       // incoming edges. Make sure we do at least one level.
       unsigned InLoopRecurseDepth =
           std::min(MaxAnalysisRecursionDepth - 1,
-                   std::max(Depth + 1, 2 * P->getNumIncomingValues() - 1));
+                   std::max(Depth + 2, 2 * P->getNumIncomingValues() - 1));
       //      InLoopRecurseDepth = MaxAnalysisRecursionDepth - 1;
       for (unsigned u = 0, e = P->getNumIncomingValues(); u < e; ++u) {
         Value *IncValue = P->getIncomingValue(u);
