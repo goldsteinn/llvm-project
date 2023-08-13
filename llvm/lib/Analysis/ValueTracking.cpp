@@ -1449,7 +1449,7 @@ static void computeKnownBitsFromOperator(const Operator *I,
       unsigned InLoopRecurseDepth =
           std::min(MaxAnalysisRecursionDepth - 1,
                    std::max(Depth + 1, P->getNumIncomingValues()));
-      //      InLoopRecurseDepth = MaxAnalysisRecursionDepth - 1;
+      InLoopRecurseDepth = MaxAnalysisRecursionDepth - 1;
       for (unsigned u = 0, e = P->getNumIncomingValues(); u < e; ++u) {
         Value *IncValue = P->getIncomingValue(u);
         // Skip direct self references.
