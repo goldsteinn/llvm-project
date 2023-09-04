@@ -61,6 +61,7 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/ModRef.h"
 #include "llvm/Transforms/Utils/AssumeBundleBuilder.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/Local.h"
@@ -1359,6 +1360,102 @@ static AttrBuilder IdentifyValidAttributes(CallBase &CB) {
   return Valid;
 }
 
+static void AddParamAccessAttributes(CallBase &CB, ValueToValueMapTy &VMap) {
+  auto *CalledFunction = CB.getCalledFunction();
+  auto &Context = CalledFunction->getContext();
+  SmallVector<AttrBuilder> ValidAttrs;
+  SmallPtrSet<const Value *, 8> Params;
+  for (unsigned I = 0, E = CB.arg_size(); I < E; ++I) {
+    ValidAttrs.emplace_back(AttrBuilder{CB.getContext()});
+    if (CB.paramHasAttr(I, Attribute::ReadNone))
+      ValidAttrs.back().addAttribute(Attribute::ReadNone);
+    if (CB.paramHasAttr(I, Attribute::ReadOnly))
+      ValidAttrs.back().addAttribute(Attribute::ReadOnly);
+    if (CB.paramHasAttr(I, Attribute::WriteOnly))
+      ValidAttrs.back().addAttribute(Attribute::WriteOnly);
+    if (CB.paramHasAttr(I, Attribute::Dereferenceable))
+      ValidAttrs.back().addAttribute(Attribute::Dereferenceable);
+    if (CB.paramHasAttr(I, Attribute::DereferenceableOrNull))
+      ValidAttrs.back().addAttribute(Attribute::DereferenceableOrNull);
+    if (ValidAttrs.back().hasAttributes())
+      Params.insert(CB.getArgOperand(I));
+  }
+  if (Params.empty())
+    return;
+  for (BasicBlock &BB : *CalledFunction) {
+    for (Instruction &Ins : BB) {
+      CallBase *InnerCB = dyn_cast<CallBase>(&Ins);
+      if (InnerCB != nullptr) {
+        if (auto *NewInnerCB =
+                dyn_cast_or_null<CallBase>(VMap.lookup(InnerCB))) {
+          for (unsigned I = 0, E = NewInnerCB->arg_size(); I < E; ++I) {
+            Value *UnderlyingV =
+                getUnderlyingObject(NewInnerCB->getArgOperand(I));
+            if (Params.contains(UnderlyingV)) {
+              for (unsigned II = 0, EE = CB.arg_size(); II < EE; ++II) {
+                if (CB.getArgOperand(II) == UnderlyingV) {
+                  AttributeList AL = NewInnerCB->getAttributes();
+                  AttributeList NewAL =
+                      AL.addParamAttributes(Context, I, ValidAttrs[II]);
+                  NewInnerCB->setAttributes(NewAL);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+static void AddAccessAttributes(CallBase &CB, ValueToValueMapTy &VMap) {
+  auto *CalledFunction = CB.getCalledFunction();
+  MemoryEffects ME = CB.getMemoryEffects();
+  if (ME == MemoryEffects::unknown())
+    return;
+  DenseMap<const BasicBlock *, std::pair<bool, bool>> FirstAlloca;
+
+  auto GetBBInfo =
+      [&FirstAlloca](const BasicBlock *BB) -> std::pair<bool, bool> {
+    auto Res = FirstAlloca.insert({BB, {false, false}});
+    if (Res.second) {
+      bool HasOkayCB = false;
+      for (const auto &Ins : *BB) {
+        if (isa<AllocaInst>(&Ins)) {
+          Res.first->second = {true, HasOkayCB};
+          return Res.first->second;
+        }
+        if (isa<CallBase>(&Ins)) {
+          HasOkayCB = true;
+        }
+      }
+      Res.first->second = {false, HasOkayCB};
+    }
+    return Res.first->second;
+  };
+
+  for (BasicBlock &BB : *CalledFunction) {
+    auto BBInfo = GetBBInfo(&BB);
+    if (!BBInfo.second) {
+      continue;
+    }
+    bool PriorAlloca = false;
+    for (const BasicBlock *PBB : predecessors(&BB)) {
+      auto PBBInfo = GetBBInfo(PBB);
+      PriorAlloca = PBBInfo.first;
+      if (PriorAlloca) {
+        break;
+      }
+    }
+    if (PriorAlloca)
+      continue;
+    for (Instruction &Ins : BB)
+      if (auto *InnerCB = dyn_cast<CallBase>(&Ins))
+        if (auto *NewInnerCB = dyn_cast_or_null<CallBase>(VMap.lookup(InnerCB)))
+          NewInnerCB->setMemoryEffects(InnerCB->getMemoryEffects() & ME);
+  }
+}
+
 static void AddReturnAttributes(CallBase &CB, ValueToValueMapTy &VMap) {
   AttrBuilder Valid = IdentifyValidAttributes(CB);
   if (!Valid.hasAttributes())
@@ -2265,13 +2362,15 @@ llvm::InlineResult llvm::InlineFunction(CallBase &CB, InlineFunctionInfo &IFI,
     SAMetadataCloner.clone();
     SAMetadataCloner.remap(FirstNewBlock, Caller->end());
 
+    AddParamAccessAttributes(CB, VMap);
+    AddAccessAttributes(CB, VMap);
+
     // Add noalias metadata if necessary.
     AddAliasScopeMetadata(CB, VMap, DL, CalleeAAR, InlinedFunctionInfo);
 
     // Clone return attributes on the callsite into the calls within the inlined
     // function which feed into its return value.
     AddReturnAttributes(CB, VMap);
-
     propagateMemProfMetadata(CalledFunc, CB,
                              InlinedFunctionInfo.ContainsMemProfMetadata, VMap);
 
