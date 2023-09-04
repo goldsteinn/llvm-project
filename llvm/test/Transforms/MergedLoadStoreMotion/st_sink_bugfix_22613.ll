@@ -101,8 +101,7 @@ for.end10:                                        ; preds = %for.cond
 
 ; Function Attrs: nounwind uwtable
 define i32 @main() {
-; CHECK-LABEL: define i32 @main(
-; CHECK-SAME: ) local_unnamed_addr #[[ATTR0]] {
+; CHECK-LABEL: define i32 @main() local_unnamed_addr {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr @b, align 4
 ; CHECK-NEXT:    [[IDXPROM1_I:%.*]] = sext i32 [[TMP0]] to i64
@@ -111,17 +110,23 @@ define i32 @main() {
 ; CHECK-NEXT:    [[A_PROMOTED6_I:%.*]] = load i32, ptr @a, align 4
 ; CHECK-NEXT:    [[ARRAYIDX2_I:%.*]] = getelementptr inbounds [1 x [3 x i8]], ptr @f, i64 0, i64 [[IDXPROM1_I]], i64 0
 ; CHECK-NEXT:    store i8 0, ptr [[ARRAYIDX2_I]], align 1
-; CHECK-NEXT:    [[ARRAYIDX2_123_I:%.*]] = getelementptr inbounds [1 x [3 x i8]], ptr @f, i64 0, i64 [[IDXPROM1_I]], i64 1
-; CHECK-NEXT:    store i8 0, ptr [[ARRAYIDX2_123_I]], align 1
-; CHECK-NEXT:    tail call void @llvm.memset.p0.i64(ptr noundef nonnull align 1 dereferenceable(3) @f, i8 1, i64 3, i1 false)
-; CHECK-NEXT:    br i1 [[TOBOOL_NOT_I]], label [[IF_END:%.*]], label [[IF_THEN_2_1_I:%.*]]
+; CHECK-NEXT:    br i1 [[TOBOOL_NOT_I]], label [[FN1_EXIT:%.*]], label [[IF_THEN_2_1_I:%.*]]
 ; CHECK:       if.then.2.1.i:
 ; CHECK-NEXT:    [[DEC_2_1_I:%.*]] = add nsw i32 [[A_PROMOTED6_I]], -6
 ; CHECK-NEXT:    store i32 [[DEC_2_1_I]], ptr @a, align 4
-; CHECK-NEXT:    br label [[IF_END]]
-; CHECK:       if.end:
+; CHECK-NEXT:    br label [[FN1_EXIT]]
+; CHECK:       fn1.exit:
+; CHECK-NEXT:    [[TMP2:%.*]] = getelementptr inbounds [1 x [3 x i8]], ptr @f, i64 0, i64 [[IDXPROM1_I]], i64 1
+; CHECK-NEXT:    store i8 0, ptr [[TMP2]], align 1
 ; CHECK-NEXT:    store i32 2, ptr @d, align 4
 ; CHECK-NEXT:    store i32 3, ptr @e, align 4
+; CHECK-NEXT:    [[TMP3:%.*]] = load i8, ptr getelementptr inbounds ([1 x [3 x i8]], ptr @f, i64 0, i64 0, i64 1), align 1
+; CHECK-NEXT:    [[CMP_NOT:%.*]] = icmp eq i8 [[TMP3]], 1
+; CHECK-NEXT:    br i1 [[CMP_NOT]], label [[IF_END:%.*]], label [[IF_THEN:%.*]]
+; CHECK:       if.then:
+; CHECK-NEXT:    tail call void @abort()
+; CHECK-NEXT:    unreachable
+; CHECK:       if.end:
 ; CHECK-NEXT:    ret i32 0
 ;
 entry:
