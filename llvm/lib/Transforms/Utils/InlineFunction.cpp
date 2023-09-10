@@ -1357,6 +1357,10 @@ static AttrBuilder IdentifyValidAttributes(CallBase &CB) {
     Valid.addAttribute(Attribute::NoAlias);
   if (CB.hasRetAttr(Attribute::NonNull))
     Valid.addAttribute(Attribute::NonNull);
+  if (CB.hasRetAttr(Attribute::NoUndef))
+    Valid.addAttribute(Attribute::NoUndef);
+  if (CB.hasRetAttr(Attribute::Alignment))
+    Valid.addAlignmentAttr(CB.getRetAlign());
   return Valid;
 }
 
@@ -1406,6 +1410,8 @@ static void AddReturnAttributes(CallBase &CB, ValueToValueMapTy &VMap) {
     // existing attribute value (i.e. attributes such as dereferenceable,
     // dereferenceable_or_null etc). See AttrBuilder::merge for more details.
     AttributeList AL = NewRetVal->getAttributes();
+    if (Valid.getAlignment().valueOrOne() < AL.getRetAlignment().valueOrOne())
+      Valid.removeAttribute(Attribute::Alignment);
     if (Valid.getDereferenceableBytes() < AL.getRetDereferenceableBytes())
       Valid.removeAttribute(Attribute::Dereferenceable);
     if (Valid.getDereferenceableOrNullBytes() <
