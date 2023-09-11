@@ -207,10 +207,10 @@ void test_core(void) {
   // CHECK-ASM: vlbb
 
   vf = vec_load_len(cptrf, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
   vd = vec_load_len(cptrd, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
 
   vec_store_len(vf, ptrf, idx);
@@ -221,10 +221,10 @@ void test_core(void) {
   // CHECK-ASM: vstl
 
   vuc = vec_load_len_r(cptruc, 0);
-  // CHECK: call <16 x i8> @llvm.s390.vlrl(i32 0, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vlrl(i32 0, ptr readonly %{{.*}})
   // CHECK-ASM: vlrl %{{.*}}, 0(%{{.*}}), 0
   vuc = vec_load_len_r(cptruc, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vlrl(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vlrl(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vlrlr
 
   vec_store_len_r(vuc, ptruc, 0);

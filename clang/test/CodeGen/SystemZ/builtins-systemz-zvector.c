@@ -636,31 +636,31 @@ void test_core(void) {
   // CHECK-ASM: vlbb
 
   vsc = vec_load_len(cptrsc, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
   vuc = vec_load_len(cptruc, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
   vss = vec_load_len(cptrss, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
   vus = vec_load_len(cptrus, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
   vsi = vec_load_len(cptrsi, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
   vui = vec_load_len(cptrui, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
   vsl = vec_load_len(cptrsl, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
   vul = vec_load_len(cptrul, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
   vd = vec_load_len(cptrd, idx);
-  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr %{{.*}})
+  // CHECK: call <16 x i8> @llvm.s390.vll(i32 %{{.*}}, ptr readonly %{{.*}})
   // CHECK-ASM: vll
 
   vec_store_len(vsc, ptrsc, idx);
