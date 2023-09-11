@@ -15,8 +15,8 @@ target triple = "x86_64-unknown-linux-gnu"
 ; Check the callsite in inlined function with uniq suffix is annotated with
 ; profile correctly.
 ; CHECK-LABEL: @_Z3foov(
-; CHECK: call void @_Z10moo_calleev(), {{.*}} !prof ![[PROF_ID1:[0-9]+]]
-; CHECK: call void @_Z10noo_calleev(), {{.*}} !prof ![[PROF_ID2:[0-9]+]]
+; CHECK: call void @_Z10moo_calleev() #[[ATTR0:[0-9]+]], {{.*}} !prof ![[PROF_ID1:[0-9]+]]
+; CHECK: call void @_Z10noo_calleev() #[[ATTR0:[0-9]+]], {{.*}} !prof ![[PROF_ID2:[0-9]+]]
 ; CHECK: ret void
 
 ; Function Attrs: uwtable mustprogress
@@ -39,7 +39,7 @@ entry:
 ; body is annotated with profile.
 ; CHECK: define internal void @_ZL3goov.__uniq.334154460836426447066042049082945760258.llvm.4206369970847378271{{.*}} !prof ![[PROF_ID3:[0-9]+]]
 ; CHECK: icmp eq ptr {{.*}} @_ZL3hoov.__uniq.334154460836426447066042049082945760258
-; CHECK: call void @_Z10hoo_calleev(), {{.*}} !prof ![[PROF_ID4:[0-9]+]]
+; CHECK: call void @_Z10hoo_calleev() #[[ATTR0:[0-9]+]], {{.*}} !prof ![[PROF_ID4:[0-9]+]]
 
 ; Function Attrs: noinline uwtable mustprogress
 define internal void @_ZL3goov.__uniq.334154460836426447066042049082945760258.llvm.4206369970847378271() #2 !dbg !20 {

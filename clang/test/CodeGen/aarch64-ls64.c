@@ -59,7 +59,7 @@ uint64_t status;
 // CHECK-CXX-NEXT:    call void @llvm.experimental.noalias.scope.decl(metadata [[META2:![0-9]+]])
 // CHECK-CXX-NEXT:    store ptr [[TMP0]], ptr [[__ADDR_ADDR_I]], align 8, !noalias !2
 // CHECK-CXX-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[__ADDR_ADDR_I]], align 8, !noalias !2
-// CHECK-CXX-NEXT:    [[TMP2:%.*]] = call { i64, i64, i64, i64, i64, i64, i64, i64 } @llvm.aarch64.ld64b(ptr [[TMP1]]), !noalias !2
+// CHECK-CXX-NEXT:    [[TMP2:%.*]] = call { i64, i64, i64, i64, i64, i64, i64, i64 } @llvm.aarch64.ld64b(ptr [[TMP1]]) #[[ATTR4:[0-9]+]], !noalias !2
 // CHECK-CXX-NEXT:    [[TMP3:%.*]] = extractvalue { i64, i64, i64, i64, i64, i64, i64, i64 } [[TMP2]], 0
 // CHECK-CXX-NEXT:    store i64 [[TMP3]], ptr [[REF_TMP]], align 8, !alias.scope !2
 // CHECK-CXX-NEXT:    [[TMP4:%.*]] = getelementptr i64, ptr [[REF_TMP]], i32 1

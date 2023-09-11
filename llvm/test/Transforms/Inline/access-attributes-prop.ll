@@ -480,7 +480,7 @@ define void @prop_cb_def_inaccessible_none_argmem_none(ptr %p) {
 define void @prop_cb_def_willreturn(ptr %p) {
 ; CHECK-LABEL: define {{[^@]+}}@prop_cb_def_willreturn
 ; CHECK-SAME: (ptr [[P:%.*]]) {
-; CHECK-NEXT:    call void @bar1(ptr [[P]])
+; CHECK-NEXT:    call void @bar1(ptr [[P]]) #[[ATTR5:[0-9]+]]
 ; CHECK-NEXT:    ret void
 ;
   call void @foo1(ptr %p) willreturn
@@ -490,7 +490,7 @@ define void @prop_cb_def_willreturn(ptr %p) {
 define void @prop_cb_def_mustprogress(ptr %p) {
 ; CHECK-LABEL: define {{[^@]+}}@prop_cb_def_mustprogress
 ; CHECK-SAME: (ptr [[P:%.*]]) {
-; CHECK-NEXT:    call void @bar1(ptr [[P]])
+; CHECK-NEXT:    call void @bar1(ptr [[P]]) #[[ATTR6:[0-9]+]]
 ; CHECK-NEXT:    ret void
 ;
   call void @foo1(ptr %p) mustprogress

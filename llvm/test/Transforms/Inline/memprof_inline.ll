@@ -125,8 +125,8 @@ declare void @_ZdaPv(ptr noundef) #4
 
 declare i32 @sleep(i32 noundef) #5
 
-; CHECK: attributes #[[COLD]] = { builtin allocsize(0) "memprof"="cold" }
-; CHECK: attributes #[[NOTCOLD]] = { builtin allocsize(0) "memprof"="notcold" }
+; CHECK: attributes #[[COLD]] = { builtin mustprogress allocsize(0) "memprof"="cold" }
+; CHECK: attributes #[[NOTCOLD]] = { builtin mustprogress allocsize(0) "memprof"="notcold" }
 
 attributes #0 = { mustprogress uwtable "disable-tail-calls"="true" "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #1 = { nobuiltin allocsize(0) "disable-tail-calls"="true" "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }

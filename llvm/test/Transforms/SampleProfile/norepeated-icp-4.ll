@@ -15,7 +15,7 @@ target triple = "x86_64-unknown-linux-gnu"
 ; CHECK-NEXT: ret void
 ;
 ; CHECK-LABEL: @_Z3foov(
-; CHECK: call void %t0.i(), {{.*}} !prof ![[PROF_ID2:[0-9]+]]
+; CHECK: call void %t0.i() #[[ATTR1:[0-9]+]], {{.*}} !prof ![[PROF_ID2:[0-9]+]]
 ; CHECK-NEXT: ret void
 ;
 ; Function Attrs: uwtable mustprogress

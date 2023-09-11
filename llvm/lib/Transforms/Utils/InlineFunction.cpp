@@ -1373,9 +1373,17 @@ static void AddParamAndFnBasicAttributes(const CallBase &CB,
   auto *CalledFunction = CB.getCalledFunction();
   auto &Context = CalledFunction->getContext();
 
+  // Collect function attributes we can blindly propagate.
+  AttrBuilder ValidFnAttrs{CB.getContext()};
+
+  if (CB.hasFnAttr(Attribute::WillReturn))
+    ValidFnAttrs.addAttribute(Attribute::WillReturn);
+  if (CB.hasFnAttr(Attribute::MustProgress))
+    ValidFnAttrs.addAttribute(Attribute::MustProgress);
+
   // Collect valid attributes for all params.
   SmallVector<AttrBuilder> ValidParamAttrs;
-  bool HasAttrToPropagate = false;
+  bool HasAttrToPropagate = ValidFnAttrs.hasAttributes();
 
   for (unsigned I = 0, E = CB.arg_size(); I < E; ++I) {
     ValidParamAttrs.emplace_back(AttrBuilder{CB.getContext()});
@@ -1411,6 +1419,8 @@ static void AddParamAndFnBasicAttributes(const CallBase &CB,
         if (auto *NewInnerCB =
                 dyn_cast_or_null<CallBase>(VMap.lookup(InnerCB))) {
           AttributeList AL = NewInnerCB->getAttributes();
+          AL = AL.addFnAttributes(Context, ValidFnAttrs);
+
           for (unsigned I = 0, E = InnerCB->arg_size(); I < E; ++I) {
             // Check if the underlying value for the parameter is an argument.
             const Value *UnderlyingV =
