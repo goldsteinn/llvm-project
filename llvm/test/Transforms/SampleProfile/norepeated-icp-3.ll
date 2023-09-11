@@ -23,7 +23,7 @@ entry:
 ; associated with the indirect call should be dropped except those values
 ; wth NOMORE_ICP_MAGICNUM magic number indicating promoted targets.
 ; CHECK-LABEL: @_Z3foov(
-; CHECK: call void %0(), {{.*}} !prof ![[PROF_ID:[0-9]+]]
+; CHECK: call void %0() #[[ATTR3:[0-9]+]], {{.*}} !prof ![[PROF_ID:[0-9]+]]
 ; CHECK-NEXT: ret void
 
 ; Function Attrs: uwtable mustprogress

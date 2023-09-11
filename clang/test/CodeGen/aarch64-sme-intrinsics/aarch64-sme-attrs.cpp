@@ -295,9 +295,9 @@ int test_variadic_template() __arm_shared_za {
 // CHECK: attributes #[[SM_BODY_CALL]] = { "aarch64_pstate_sm_body" }
 // CHECK: attributes #[[ZA_SHARED_CALL]] = { "aarch64_pstate_za_shared" }
 // CHECK: attributes #[[ZA_PRESERVED_CALL]] = { "aarch64_pstate_za_preserved" }
-// CHECK: attributes #[[NOUNWIND_CALL]] = { nounwind }
-// CHECK: attributes #[[NOUNWIND_SM_ENABLED_CALL]] = { nounwind "aarch64_pstate_sm_enabled" }
-// CHECK: attributes #[[NOUNWIND_SM_COMPATIBLE_CALL]] = { nounwind "aarch64_pstate_sm_compatible" }
-// CHECK: attributes #[[NOUNWIND_ZA_SHARED_CALL]] = { nounwind "aarch64_pstate_za_shared" }
-// CHECK: attributes #[[NOUNWIND_ZA_PRESERVED_CALL]] = { nounwind "aarch64_pstate_za_preserved" }
+// CHECK: attributes #[[NOUNWIND_CALL]] = { mustprogress nounwind }
+// CHECK: attributes #[[NOUNWIND_SM_ENABLED_CALL]] = { mustprogress nounwind "aarch64_pstate_sm_enabled" }
+// CHECK: attributes #[[NOUNWIND_SM_COMPATIBLE_CALL]] = { mustprogress nounwind "aarch64_pstate_sm_compatible" }
+// CHECK: attributes #[[NOUNWIND_ZA_SHARED_CALL]] = { mustprogress nounwind "aarch64_pstate_za_shared" }
+// CHECK: attributes #[[NOUNWIND_ZA_PRESERVED_CALL]] = { mustprogress nounwind "aarch64_pstate_za_preserved" }
 

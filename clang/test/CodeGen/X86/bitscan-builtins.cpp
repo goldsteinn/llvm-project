@@ -1,12 +1,13 @@
-// RUN: %clang_cc1 -x c -ffreestanding %s -triple=x86_64-unknown-unknown -emit-llvm -o - | FileCheck %s
+// RUN: %clang_cc1 -x c++ -std=c++11 -ffreestanding %s -triple=x86_64-unknown-unknown -emit-llvm -o - | FileCheck %s
+
 // PR33722
-// RUN: %clang_cc1 -x c -ffreestanding %s -triple x86_64-unknown-unknown -fms-extensions -fms-compatibility-version=19.00 -emit-llvm -o - | FileCheck %s
+// RUN: %clang_cc1 -x c++ -ffreestanding %s -triple x86_64-unknown-unknown -fms-extensions -fms-compatibility-version=19.00 -emit-llvm -o - | FileCheck %s
 
 #include <x86intrin.h>
 
 int test_bit_scan_forward(int a) {
 // CHECK-LABEL: test_bit_scan_forward
-// CHECK: %[[call:.*]] = call i32 @llvm.cttz.i32(i32 %{{.*}}, i1 true)
+// CHECK: %[[call:.*]] = call noundef i32 @llvm.cttz.i32(i32 %{{.*}}, i1 true)
 // CHECK: ret i32 %[[call]]
   return _bit_scan_forward(a);
 }
@@ -21,7 +22,7 @@ int test_bit_scan_reverse(int a) {
 
 int test__bsfd(int X) {
 // CHECK-LABEL: test__bsfd
-// CHECK: %[[call:.*]] = call i32 @llvm.cttz.i32(i32 %{{.*}}, i1 true)
+// CHECK: %[[call:.*]] = call noundef i32 @llvm.cttz.i32(i32 %{{.*}}, i1 true)
   return __bsfd(X);
 }
 

@@ -1,22 +1,22 @@
-// RUN: %clang_cc1 -x c -ffreestanding %s -triple=x86_64-apple-darwin -target-feature +popcnt -emit-llvm -o - | FileCheck %s --check-prefixes=CHECK,CHECK-POPCNT
-// RUN: %clang_cc1 -x c -ffreestanding %s -triple=x86_64-apple-darwin -emit-llvm -o - | FileCheck %s
+// RUN: %clang_cc1 -x c++ -std=c++11 -ffreestanding %s -triple=x86_64-apple-darwin -target-feature +popcnt -emit-llvm -o - | FileCheck %s --check-prefixes=CHECK,CHECK-POPCNT
+// RUN: %clang_cc1 -x c++ -std=c++11 -ffreestanding %s -triple=x86_64-apple-darwin -emit-llvm -o - | FileCheck %s
 
 #include <x86intrin.h>
 
 #ifdef __POPCNT__
 int test_mm_popcnt_u32(unsigned int __X) {
-  //CHECK-POPCNT: call i32 @llvm.ctpop.i32
+  //CHECK-POPCNT: call noundef i32 @llvm.ctpop.i32
   return _mm_popcnt_u32(__X);
 }
 #endif
 
 int test_popcnt32(unsigned int __X) {
-  //CHECK: call i32 @llvm.ctpop.i32
+  //CHECK: call noundef i32 @llvm.ctpop.i32
   return _popcnt32(__X);
 }
 
 int test__popcntd(unsigned int __X) {
-  //CHECK: call i32 @llvm.ctpop.i32
+  //CHECK: call noundef i32 @llvm.ctpop.i32
   return __popcntd(__X);
 }
 
