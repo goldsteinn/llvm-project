@@ -1387,6 +1387,16 @@ static void AddParamAndFnBasicAttributes(const CallBase &CB,
       ValidParamAttrs.back().addAttribute(Attribute::ReadOnly);
     if (CB.paramHasAttr(I, Attribute::WriteOnly))
       ValidParamAttrs.back().addAttribute(Attribute::WriteOnly);
+    // Deref, DerefOrNull, Align, and NonNull can only be propagated to the
+    // exact argument. This is slightly conservative.
+    if (CB.paramHasAttr(I, Attribute::Dereferenceable))
+      HasAttrToPropagate = true;
+    if (CB.paramHasAttr(I, Attribute::DereferenceableOrNull))
+      HasAttrToPropagate = true;
+    if (CB.paramHasAttr(I, Attribute::NonNull))
+      HasAttrToPropagate = true;
+    if (CB.paramHasAttr(I, Attribute::Alignment))
+      HasAttrToPropagate = true;
     HasAttrToPropagate |= ValidParamAttrs.back().hasAttributes();
   }
 
@@ -1410,6 +1420,33 @@ static void AddParamAndFnBasicAttributes(const CallBase &CB,
               // If so, propagate its access attributes.
               AL = AL.addParamAttributes(Context, I,
                                          ValidParamAttrs[ArgNo]);
+              // We can add argument alignment if the inner callsite param is
+              // the actual argument.
+              if (UnderlyingV != InnerCB->getArgOperand(I))
+                continue;
+              AttrBuilder ExactAL{Context};
+              // For DerefOrNull, Defer, and Align only add if not present or
+              // new value is more constrained.
+
+              // DerefOrNull
+              if (CB.getParamDereferenceableOrNullBytes(ArgNo) >
+                  NewInnerCB->getParamDereferenceableOrNullBytes(I))
+                ExactAL.addDereferenceableOrNullAttr(
+                    CB.getParamDereferenceableOrNullBytes(ArgNo));
+              // Deref
+              if (CB.getParamDereferenceableBytes(ArgNo) >
+                  NewInnerCB->getParamDereferenceableBytes(I))
+                ExactAL.addDereferenceableAttr(
+                    CB.getParamDereferenceableBytes(ArgNo));
+              // Align
+              if (CB.getParamAlign(ArgNo).valueOrOne() >
+                  NewInnerCB->getParamAlign(I).valueOrOne())
+                ExactAL.addAlignmentAttr(CB.getParamAlign(ArgNo));
+              // NonNull
+              if (CB.paramHasAttr(ArgNo, Attribute::NonNull))
+                ExactAL.addAttribute(Attribute::NonNull);
+
+              AL = AL.addParamAttributes(Context, I, ExactAL);
             }
           }
           NewInnerCB->setAttributes(AL);
