@@ -177,6 +177,16 @@ static void **AllocateBuckets(unsigned NumBuckets) {
   return Buckets;
 }
 
+/// ReallocateBuckets - Allocated initialized bucket memory potentially reusing
+/// an old allocation as the base.
+static void **ReallocateBuckets(void **oldp, unsigned NumBuckets) {
+  void **Buckets = static_cast<void **>(safe_realloc(
+      static_cast<void *>(oldp), sizeof(void *) * (NumBuckets + 1)));
+  // Set the very last bucket to be a non-null "pointer".
+  Buckets[NumBuckets] = reinterpret_cast<void *>(-1);
+  return Buckets;
+}
+
 //===----------------------------------------------------------------------===//
 // FoldingSetBase Implementation
 
@@ -221,6 +231,24 @@ void FoldingSetBase::clear() {
   NumNodes = 0;
 }
 
+// Add new node to bucket's linked list.
+static void LinkInNode(FoldingSetBase::Node *N, void *InsertPos) {
+  /// The insert position is actually a bucket pointer.
+  void **Bucket = static_cast<void **>(InsertPos);
+
+  void *Next = *Bucket;
+
+  // If this is the first insertion into this bucket, its next pointer will be
+  // null.  Pretend as if it pointed to itself, setting the low bit to indicate
+  // that it is a pointer to the bucket.
+  if (!Next)
+    Next = reinterpret_cast<void *>(reinterpret_cast<intptr_t>(Bucket) | 1);
+
+  // Set the node's next pointer, and make the bucket point to the node.
+  N->SetNextInBucket(Next);
+  *Bucket = N;
+}
+
 void FoldingSetBase::GrowBucketCount(unsigned NewBucketCount,
                                      const FoldingSetInfo &Info) {
   assert((NewBucketCount > NumBuckets) &&
@@ -230,31 +258,27 @@ void FoldingSetBase::GrowBucketCount(unsigned NewBucketCount,
   unsigned OldNumBuckets = NumBuckets;
 
   // Clear out new buckets.
-  Buckets = AllocateBuckets(NewBucketCount);
+  Buckets = ReallocateBuckets(OldBuckets, NewBucketCount);
   // Set NumBuckets only if allocation of new buckets was successful.
   NumBuckets = NewBucketCount;
-  NumNodes = 0;
 
   // Walk the old buckets, rehashing nodes into their new place.
   FoldingSetNodeID TempID;
   for (unsigned i = 0; i != OldNumBuckets; ++i) {
-    void *Probe = OldBuckets[i];
-    if (!Probe) continue;
+    void *Probe = Buckets[i];
+    Buckets[i + OldNumBuckets] = nullptr;
+    if (!Probe)
+      continue;
+    Buckets[i] = nullptr;
     while (Node *NodeInBucket = GetNextPtr(Probe)) {
       // Figure out the next link, remove NodeInBucket from the old link.
       Probe = NodeInBucket->getNextInBucket();
-      NodeInBucket->SetNextInBucket(nullptr);
-
-      // Insert the node into the new bucket, after recomputing the hash.
-      InsertNode(NodeInBucket,
+      LinkInNode(NodeInBucket,
                  GetBucketFor(Info.ComputeNodeHash(this, NodeInBucket, TempID),
-                              Buckets, NumBuckets),
-                 Info);
+                              Buckets, NumBuckets));
       TempID.clear();
     }
   }
-
-  free(OldBuckets);
 }
 
 /// GrowHashTable - Double the size of the hash table and rehash everything.
@@ -312,21 +336,7 @@ void FoldingSetBase::InsertNode(Node *N, void *InsertPos,
   }
 
   ++NumNodes;
-
-  /// The insert position is actually a bucket pointer.
-  void **Bucket = static_cast<void**>(InsertPos);
-
-  void *Next = *Bucket;
-
-  // If this is the first insertion into this bucket, its next pointer will be
-  // null.  Pretend as if it pointed to itself, setting the low bit to indicate
-  // that it is a pointer to the bucket.
-  if (!Next)
-    Next = reinterpret_cast<void*>(reinterpret_cast<intptr_t>(Bucket)|1);
-
-  // Set the node's next pointer, and make the bucket point to the node.
-  N->SetNextInBucket(Next);
-  *Bucket = N;
+  LinkInNode(N, InsertPos);
 }
 
 /// RemoveNode - Remove a node from the folding set, returning true if one was
