@@ -88,7 +88,7 @@ static cl::opt<int> BrMergingBaseCostThresh(
     cl::Hidden);
 
 static cl::opt<int> BrMergingLikelyBias(
-    "x86-cond-likely-bias", cl::init(1),
+    "x86-cond-likely-bias", cl::init(0),
     cl::desc(
         "Likely."),
     cl::Hidden);
@@ -3420,14 +3420,14 @@ bool X86TargetLowering::keepJumpConditionsTogether(
     BasicBlock *IfFalse = I.getSuccessor(0);
     BasicBlock *IfTrue = I.getSuccessor(1);
 
-    std::optional<bool> HotEdge;
+    std::optional<bool> Likely;
     if (BPI->isEdgeHot(I.getParent(), IfTrue))
-      HotEdge = true;
+      Likely = true;
     else if (BPI->isEdgeHot(I.getParent(), IfFalse))
-      HotEdge = false;
+      Likely = false;
 
-    if (HotEdge) {
-      if (Opc == (*HotEdge ? Instruction::And : Instruction::Or))
+    if (Likely) {
+      if (Opc == (*Likely ? Instruction::And : Instruction::Or))
         // Its likely we will have to compute both lhs and rhs of condition
         CostThresh += BrMergingLikelyBias.getValue();
       else {
