@@ -93,14 +93,10 @@ define void @and(i32 %x, i32 %y, i32 %z) {
 ; CHECK-NEXT:    [[CMP2:%.*]] = icmp ugt i32 [[Z:%.*]], [[Y]]
 ; CHECK-NEXT:    [[AND:%.*]] = and i1 [[CMP1]], [[CMP2]]
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[AND]])
-; CHECK-NEXT:    [[CMP3:%.*]] = icmp ugt i32 [[X]], [[Y]]
-; CHECK-NEXT:    call void @use(i1 [[CMP3]])
-; CHECK-NEXT:    [[CMP4:%.*]] = icmp uge i32 [[X]], [[Y]]
-; CHECK-NEXT:    call void @use(i1 [[CMP4]])
-; CHECK-NEXT:    [[CMP5:%.*]] = icmp ugt i32 [[Z]], [[Y]]
-; CHECK-NEXT:    call void @use(i1 [[CMP5]])
-; CHECK-NEXT:    [[CMP6:%.*]] = icmp uge i32 [[Z]], [[Y]]
-; CHECK-NEXT:    call void @use(i1 [[CMP6]])
+; CHECK-NEXT:    call void @use(i1 true)
+; CHECK-NEXT:    call void @use(i1 true)
+; CHECK-NEXT:    call void @use(i1 true)
+; CHECK-NEXT:    call void @use(i1 true)
 ; CHECK-NEXT:    ret void
 ;
   %cmp1 = icmp ugt i32 %x, %y
