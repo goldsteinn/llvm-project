@@ -716,8 +716,8 @@ static void computeKnownBitsFromCond(const Value *V, Value *Cond,
     KnownBits Known3(Known.getBitWidth());
     computeKnownBitsFromCond(V, A, Known2, Depth + 1, SQ, Invert);
     computeKnownBitsFromCond(V, B, Known3, Depth + 1, SQ, Invert);
-    if (Invert ? match(Cond, m_LogicalOr(m_Value(A), m_Value(B)))
-               : match(Cond, m_LogicalAnd(m_Value(A), m_Value(B))))
+    if (Invert ? match(Cond, m_LogicalOr(m_Value(), m_Value()))
+               : match(Cond, m_LogicalAnd(m_Value(), m_Value())))
       Known2 = Known2.unionWith(Known3);
     else
       Known2 = Known2.intersectWith(Known3);
