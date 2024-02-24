@@ -1,9 +1,10 @@
-#include "llvm/Analysis/ConditionCacheUtil.h"
+//#include "llvm/Analysis/ConditionCacheUtil.h"
 #include "llvm/IR/PatternMatch.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
 
+#if 0
 void llvm::addValueAffectedByCondition(
     Value *V, std::function<void(Value *, int)> InsertAffected, int Idx) {
   assert(V != nullptr);
@@ -78,3 +79,4 @@ void llvm::findValuesAffectedByCondition(
     }
   }
 }
+#endif
