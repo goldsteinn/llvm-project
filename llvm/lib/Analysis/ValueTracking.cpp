@@ -3320,7 +3320,7 @@ static unsigned ComputeNumSignBitsImpl(const Value *V,
   // Note that ConstantInt is handled by the general computeKnownBits case
   // below.
 
-  if (Depth == MaxAnalysisRecursionDepth)
+  if (TyBits == 1 || Depth == MaxAnalysisRecursionDepth)
     return 1;
 
   if (auto *U = dyn_cast<Operator>(V)) {
