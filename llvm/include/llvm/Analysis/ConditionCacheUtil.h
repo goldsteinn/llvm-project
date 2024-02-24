@@ -25,7 +25,8 @@ static void addValueAffectedByCondition(
 }
 
 static void findValuesAffectedByCondition(
-    Value *Cond, std::function<void(Value *, int)> InsertAffected) {
+    Value *Cond, bool IsAssume,
+    std::function<void(Value *, int)> InsertAffected) {
   using namespace llvm::PatternMatch;
   auto AddAffected = [&InsertAffected](Value *V) {
     addValueAffectedByCondition(V, InsertAffected);
@@ -42,20 +43,26 @@ static void findValuesAffectedByCondition(
     CmpInst::Predicate Pred;
     Value *A, *B, *X;
     AddAffected(V);
-    if (match(V, m_Not(m_Value(A)))) {
+    if (!IsAssume && match(V, m_Not(m_Value(A)))) {
       Worklist.push_back(A);
-    } else if (match(V, m_LogicalOp(m_Value(A), m_Value(B)))) {
+    } else if (!IsAssume && match(V, m_LogicalOp(m_Value(A), m_Value(B)))) {
       Worklist.push_back(A);
       Worklist.push_back(B);
     } else if (match(V, m_Cmp(Pred, m_Value(A), m_Value(B)))) {
       AddAffected(A);
       AddAffected(B);
       if (match(B, m_Constant())) {
-        if (match(A, m_BitwiseLogic(m_Value(X), m_ConstantInt())) ||
-            match(A, m_Shift(m_Value(X), m_ConstantInt())) ||
-            match(A, m_Add(m_Value(X), m_ConstantInt())) ||
-            match(A, m_Sub(m_ConstantInt(), m_Value(X))))
-          AddAffected(X);
+        if (Pred == ICmpInst::ICMP_EQ ||
+            (!IsAssume && Pred == ICmpInst::ICMP_NE)) {
+          if (match(A, m_BitwiseLogic(m_Value(X), m_ConstantInt())) ||
+              match(A, m_Shift(m_Value(X), m_ConstantInt())) ||
+              match(A, m_Sub(m_ConstantInt(), m_Value(X))))
+            AddAffected(X);
+        }
+        if (Pred == ICmpInst::ICMP_ULT || Pred == ICmpInst::ICMP_UGT) {
+          if (match(A, m_Add(m_Value(X), m_ConstantInt())))
+            AddAffected(X);
+        }
       }
 
       if ((Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SGT) &&

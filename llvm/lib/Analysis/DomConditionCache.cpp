@@ -16,7 +16,7 @@ using namespace llvm::PatternMatch;
 static void findAffectedValues(Value *Cond,
                                SmallVectorImpl<Value *> &Affected) {
   auto InsertAffected = [&Affected](Value *V, int) { Affected.push_back(V); };
-  findValuesAffectedByCondition(Cond, InsertAffected);
+  findValuesAffectedByCondition(Cond, /*IsAssume*/ false, InsertAffected);
 }
 
 void DomConditionCache::registerBranch(BranchInst *BI) {

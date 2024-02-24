@@ -82,7 +82,7 @@ findAffectedValues(CallBase *CI, TargetTransformInfo *TTI,
   }
 
   Value *Cond = CI->getArgOperand(0);
-  findValuesAffectedByCondition(Cond, InsertAffected);
+  findValuesAffectedByCondition(Cond, /*IsAssume*/ true, InsertAffected);
 
   if (TTI) {
     const Value *Ptr;
