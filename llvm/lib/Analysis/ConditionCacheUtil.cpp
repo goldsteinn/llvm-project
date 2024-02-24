@@ -48,10 +48,14 @@ void llvm::findValuesAffectedByCondition(
       AddAffected(A);
       AddAffected(B);
       if (match(B, m_Constant())) {
-        if (match(A, m_BitwiseLogic(m_Value(X), m_ConstantInt())) ||
-            match(A, m_Shift(m_Value(X), m_ConstantInt())) ||
-            match(A, m_Add(m_Value(X), m_ConstantInt())) ||
-            match(A, m_Sub(m_ConstantInt(), m_Value(X))))
+        // C - X
+        // X + C
+        if (ICmpInst::isEquality(Pred) &&
+            (match(A, m_BitwiseLogic(m_Value(X), m_ConstantInt())) ||
+             match(A, m_Shift(m_Value(X), m_ConstantInt()))))
+          AddAffected(X);
+        if (Pred == ICmpInst::ICMP_ULT &&
+            match(A, m_Add(m_Value(X), m_ConstantInt())))
           AddAffected(X);
       }
 

@@ -799,15 +799,13 @@ void llvm::computeKnownBitsFromContext(const Value *V, KnownBits &Known,
     if (Depth == MaxAnalysisRecursionDepth)
       continue;
 
-    ICmpInst *Cmp = dyn_cast<ICmpInst>(Arg);
-    if (!Cmp)
+    if (!isa<ICmpInst>(Arg) && !match(Arg, m_LogicalOp(m_Value(), m_Value())))
       continue;
 
     if (!isValidAssumeForContext(I, Q.CxtI, Q.DT))
       continue;
 
-    computeKnownBitsFromCmp(V, Cmp->getPredicate(), Cmp->getOperand(0),
-                            Cmp->getOperand(1), Known, Q);
+    computeKnownBitsFromCond(V, Arg, Known, /*Depth*/ 0, Q, /*Invert*/ false);
   }
 
   // Conflicting assumption: Undefined behavior will occur on this execution
