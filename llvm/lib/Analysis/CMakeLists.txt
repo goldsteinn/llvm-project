@@ -45,7 +45,7 @@ add_llvm_component_library(LLVMAnalysis
   CmpInstAnalysis.cpp
   CostModel.cpp
   CodeMetrics.cpp
-  ConditionCacheUtil.cpp
+#  ConditionCacheUtil.cpp
   ConstantFolding.cpp
   CycleAnalysis.cpp
   DDG.cpp
