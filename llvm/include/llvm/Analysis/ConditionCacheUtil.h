@@ -46,8 +46,9 @@ static void findValuesAffectedByCondition(
     if (IsAssume)
       AddAffected(V);
 
-    if (IsAssume && match(V, m_Not(m_Value(X))))
+    if (match(V, m_Not(m_Value(X))))
       AddAffected(X);
+
     if (!IsAssume && match(V, m_LogicalOp(m_Value(A), m_Value(B)))) {
       Worklist.push_back(A);
       Worklist.push_back(B);
