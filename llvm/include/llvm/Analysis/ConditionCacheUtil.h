@@ -64,18 +64,12 @@ static void findValuesAffectedByCondition(
             AddAffected(X);
         }
       } else {
-        if (Pred == ICmpInst::ICMP_NE)
-          if (match(A, m_And(m_Value(X), m_Power2())) && match(B, m_Zero()))
-            AddAffected(X);
+        // Handle (A + C1) u< C2, which is the canonical form of
+        // A > C3 && A < C4.
+        if (match(A, m_Add(m_Value(X), m_ConstantInt())) &&
+            match(B, m_ConstantInt()))
+          AddAffected(X);
 
-        if (!IsAssume || Pred == ICmpInst::ICMP_ULT) {
-          // Handle (A + C1) u< C2, which is the canonical form of
-          // A > C3 && A < C4.
-          if (match(A, m_Add(m_Value(X), m_ConstantInt())) &&
-              match(B, m_ConstantInt()))
-            AddAffected(X);
-        }
-        
         // Handle icmp slt/sgt (bitcast X to int), 0/-1, which is supported
         // by computeKnownFPClass().
         if (match(A, m_ElementWiseBitCast(m_Value(X)))) {
