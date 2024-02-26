@@ -85,7 +85,7 @@ static void findValuesAffectedByCondition(
             InsertAffected(X, -1);
         }
 
-        if (IsAssume && CmpInst::isFPPredicate(Pred)) {
+        if (CmpInst::isFPPredicate(Pred)) {
           // fcmp fneg(x), y
           // fcmp fabs(x), y
           // fcmp fneg(fabs(x)), y
