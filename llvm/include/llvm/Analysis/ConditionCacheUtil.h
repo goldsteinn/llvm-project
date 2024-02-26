@@ -53,8 +53,8 @@ static void findValuesAffectedByCondition(
       Worklist.push_back(B);
     } else if (match(V, m_Cmp(Pred, m_Value(A), m_Value(B)))) {
       AddAffected(A);
-      if (IsAssume)
-        AddAffected(B);
+      AddAffected(B);
+
       if (IsAssume || match(B, m_ConstantInt())) {
         if (IsAssume ? (Pred == ICmpInst::ICMP_EQ)
                      : ICmpInst::isEquality(Pred)) {
@@ -96,10 +96,8 @@ static void findValuesAffectedByCondition(
           }
         }
       }
-    } else if ((!IsAssume &&
-                match(Cond, m_FCmp(Pred, m_Value(A), m_Constant()))) ||
-               match(Cond, m_Intrinsic<Intrinsic::is_fpclass>(m_Value(A),
-                                                              m_Value(B)))) {
+    } else if (match(Cond, m_Intrinsic<Intrinsic::is_fpclass>(m_Value(A),
+                                                              m_Value()))) {
       // Handle patterns that computeKnownFPClass() support.
       AddAffected(A);
     }
