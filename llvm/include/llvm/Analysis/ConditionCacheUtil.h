@@ -1,6 +1,20 @@
+//===- llvm/Analysis/ConditionCacheUtil.h -----------------------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// Shared by DomConditionCache and AssumptionCache. Holds common operation of
+// finding values potentially affected by an assumed/branched on condition.
+//
+//===----------------------------------------------------------------------===//
+
 #ifndef LLVM_ANALYSIS_CONDITIONCACHEUTIL_H
 #define LLVM_ANALYSIS_CONDITIONCACHEUTIL_H
 
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/PatternMatch.h"
 #include <functional>
 
@@ -48,63 +62,56 @@ static void findValuesAffectedByCondition(
     CmpInst::Predicate Pred;
     Value *A, *B, *X;
 
-    if (IsAssume)
+    if (IsAssume) {
       AddAffected(V);
+      if (match(V, m_Not(m_Value(X))))
+        AddAffected(X);
+    }
 
-    if (IsAssume && match(V, m_Not(m_Value(X))))
-      AddAffected(X);
-    if (!IsAssume && match(V, m_LogicalOp(m_Value(A), m_Value(B)))) {
+    if (match(V, m_LogicalOp(m_Value(A), m_Value(B)))) {
       Worklist.push_back(A);
       Worklist.push_back(B);
     } else if (match(V, m_Cmp(Pred, m_Value(A), m_Value(B)))) {
       AddAffected(A);
       if (IsAssume)
         AddAffected(B);
-      if (IsAssume || match(B, m_ConstantInt())) {
-        if (IsAssume ? (Pred == ICmpInst::ICMP_EQ)
-                     : ICmpInst::isEquality(Pred)) {
-          if (match(B, m_ConstantInt())) {
-            // (X & C) or (X | C) or (X ^ C).
-            // (X << C) or (X >>_s C) or (X >>_u C).
-            if (match(A, m_BitwiseLogic(m_Value(X), m_ConstantInt())) ||
-                match(A, m_Shift(m_Value(X), m_ConstantInt())))
-              AddAffected(X);
-          }
-        } else {
-          if (Pred == ICmpInst::ICMP_NE)
-            if (match(A, m_And(m_Value(X), m_Power2())) && match(B, m_Zero()))
-              AddAffected(X);
 
-          if (!IsAssume || Pred == ICmpInst::ICMP_ULT) {
-            // Handle (A + C1) u< C2, which is the canonical form of
-            // A > C3 && A < C4.
-            if (match(A, m_Add(m_Value(X), m_ConstantInt())) &&
-                match(B, m_ConstantInt()))
-              AddAffected(X);
-          }
-          if (!IsAssume) {
-            // Handle icmp slt/sgt (bitcast X to int), 0/-1, which is supported
-            // by computeKnownFPClass().
-            if ((Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SGT) &&
-                match(A, m_ElementWiseBitCast(m_Value(X))))
-              InsertAffected(X, -1);
-          }
+      if (ICmpInst::isEquality(Pred)) {
+        if (match(B, m_ConstantInt())) {
+          // (X & C) or (X | C) or (X ^ C).
+          // (X << C) or (X >>_s C) or (X >>_u C).
+          if (match(A, m_BitwiseLogic(m_Value(X), m_ConstantInt())) ||
+              match(A, m_Shift(m_Value(X), m_ConstantInt())))
+            AddAffected(X);
+        }
+      } else {
+        // Handle (A + C1) u< C2, which is the canonical form of
+        // A > C3 && A < C4.
+        if (match(A, m_Add(m_Value(X), m_ConstantInt())) &&
+            match(B, m_ConstantInt()))
+          AddAffected(X);
 
-          if (IsAssume && CmpInst::isFPPredicate(Pred)) {
-            // fcmp fneg(x), y
-            // fcmp fabs(x), y
-            // fcmp fneg(fabs(x)), y
-            if (match(A, m_FNeg(m_Value(A))))
-              AddAffected(A);
-            if (match(A, m_FAbs(m_Value(A))))
-              AddAffected(A);
-          }
+        // Handle icmp slt/sgt (bitcast X to int), 0/-1, which is supported
+        // by computeKnownFPClass().
+        if (match(A, m_ElementWiseBitCast(m_Value(X)))) {
+          if (Pred == ICmpInst::ICMP_SLT && match(B, m_Zero()))
+            InsertAffected(X, -1);
+          else if (Pred == ICmpInst::ICMP_SGT && match(B, m_AllOnes()))
+            InsertAffected(X, -1);
+        }
+
+        if (CmpInst::isFPPredicate(Pred)) {
+          // fcmp fneg(x), y
+          // fcmp fabs(x), y
+          // fcmp fneg(fabs(x)), y
+          if (match(A, m_FNeg(m_Value(A))))
+            AddAffected(A);
+          if (match(A, m_FAbs(m_Value(A))))
+            AddAffected(A);
         }
       }
-    } else if ((!IsAssume &&
-                match(Cond, m_FCmp(Pred, m_Value(A), m_Constant()))) ||
-               match(Cond, m_Intrinsic<Intrinsic::is_fpclass>(m_Value(A),
-                                                              m_Value(B)))) {
+    } else if (match(Cond, m_Intrinsic<Intrinsic::is_fpclass>(m_Value(A),
+                                                              m_Value()))) {
       // Handle patterns that computeKnownFPClass() support.
       AddAffected(A);
     }
