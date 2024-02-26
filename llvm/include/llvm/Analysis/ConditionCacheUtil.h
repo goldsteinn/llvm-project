@@ -55,45 +55,44 @@ static void findValuesAffectedByCondition(
       AddAffected(A);
       AddAffected(B);
 
-      if (IsAssume || match(B, m_ConstantInt())) {
-        if (IsAssume ? (Pred == ICmpInst::ICMP_EQ)
-                     : ICmpInst::isEquality(Pred)) {
-          if (match(B, m_ConstantInt())) {
-            // (X & C) or (X | C) or (X ^ C).
-            // (X << C) or (X >>_s C) or (X >>_u C).
-            if (match(A, m_BitwiseLogic(m_Value(X), m_ConstantInt())) ||
-                match(A, m_Shift(m_Value(X), m_ConstantInt())))
-              AddAffected(X);
-          }
-        } else {
-          if (Pred == ICmpInst::ICMP_NE)
-            if (match(A, m_And(m_Value(X), m_Power2())) && match(B, m_Zero()))
-              AddAffected(X);
+      if (ICmpInst::isEquality(Pred)) {
+        if (match(B, m_ConstantInt())) {
+          // (X & C) or (X | C) or (X ^ C).
+          // (X << C) or (X >>_s C) or (X >>_u C).
+          if (match(A, m_BitwiseLogic(m_Value(X), m_ConstantInt())) ||
+              match(A, m_Shift(m_Value(X), m_ConstantInt())))
+            AddAffected(X);
+        }
+      } else {
+        if (Pred == ICmpInst::ICMP_NE)
+          if (match(A, m_And(m_Value(X), m_Power2())) && match(B, m_Zero()))
+            AddAffected(X);
 
-          if (!IsAssume || Pred == ICmpInst::ICMP_ULT) {
-            // Handle (A + C1) u< C2, which is the canonical form of
-            // A > C3 && A < C4.
-            if (match(A, m_Add(m_Value(X), m_ConstantInt())) &&
-                match(B, m_ConstantInt()))
-              AddAffected(X);
-          }
-          if (!IsAssume) {
-            // Handle icmp slt/sgt (bitcast X to int), 0/-1, which is supported
-            // by computeKnownFPClass().
-            if ((Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SGT) &&
-                match(A, m_ElementWiseBitCast(m_Value(X))))
-              InsertAffected(X, -1);
-          }
+        if (!IsAssume || Pred == ICmpInst::ICMP_ULT) {
+          // Handle (A + C1) u< C2, which is the canonical form of
+          // A > C3 && A < C4.
+          if (match(A, m_Add(m_Value(X), m_ConstantInt())) &&
+              match(B, m_ConstantInt()))
+            AddAffected(X);
+        }
+        
+        // Handle icmp slt/sgt (bitcast X to int), 0/-1, which is supported
+        // by computeKnownFPClass().
+        if (match(A, m_ElementWiseBitCast(m_Value(X)))) {
+          if (Pred == ICmpInst::ICMP_SLT && match(B, m_Zero()))
+            InsertAffected(X, -1);
+          else if (Pred == ICmpInst::ICMP_SGT && match(B, m_AllOnes()))
+            InsertAffected(X, -1);
+        }
 
-          if (IsAssume && CmpInst::isFPPredicate(Pred)) {
-            // fcmp fneg(x), y
-            // fcmp fabs(x), y
-            // fcmp fneg(fabs(x)), y
-            if (match(A, m_FNeg(m_Value(A))))
-              AddAffected(A);
-            if (match(A, m_FAbs(m_Value(A))))
-              AddAffected(A);
-          }
+        if (IsAssume && CmpInst::isFPPredicate(Pred)) {
+          // fcmp fneg(x), y
+          // fcmp fabs(x), y
+          // fcmp fneg(fabs(x)), y
+          if (match(A, m_FNeg(m_Value(A))))
+            AddAffected(A);
+          if (match(A, m_FAbs(m_Value(A))))
+            AddAffected(A);
         }
       }
     } else if (match(Cond, m_Intrinsic<Intrinsic::is_fpclass>(m_Value(A),
