@@ -50,12 +50,13 @@ static void findValuesAffectedByCondition(
       AddAffected(X);
 
     // No point adding if we aren't going to be able to analyze
-    if (match(V, m_LogicalOp(m_Value(A), m_Value(B)))) {
+    else if (match(V, m_LogicalOp(m_Value(A), m_Value(B)))) {
       Worklist.push_back(A);
       Worklist.push_back(B);
     } else if (match(V, m_Cmp(Pred, m_Value(A), m_Value(B)))) {
       AddAffected(A);
-      AddAffected(B);
+      if (IsAssume)
+        AddAffected(B);
 
       if (ICmpInst::isEquality(Pred)) {
         if (match(B, m_ConstantInt())) {
