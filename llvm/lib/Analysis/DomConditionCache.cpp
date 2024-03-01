@@ -7,9 +7,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Analysis/DomConditionCache.h"
-#include "llvm/Analysis/ConditionCacheUtil.h"
-
+#include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/Instruction.h"
+#include "llvm/IR/Instructions.h"
 using namespace llvm;
+
+void findValuesAffectedByCondition(Value *Cond, bool IsAssume,
+                                   function_ref<void(Value *)> InsertAffected);
 
 static void findAffectedValues(Value *Cond,
                                SmallVectorImpl<Value *> &Affected) {

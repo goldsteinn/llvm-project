@@ -16,7 +16,6 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/AssumeBundleQueries.h"
-#include "llvm/Analysis/ConditionCacheUtil.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/BasicBlock.h"
@@ -43,6 +42,10 @@ static cl::opt<bool>
                           cl::desc("Enable verification of assumption cache"),
                           cl::init(false));
 
+void addValueAffectedByCondition(Value *V,
+                                 function_ref<void(Value *)> InsertAffected);
+void findValuesAffectedByCondition(Value *Cond, bool IsAssume,
+                                   function_ref<void(Value *)> InsertAffected);
 SmallVector<AssumptionCache::ResultElem, 1> &
 AssumptionCache::getOrInsertAffectedValues(Value *V) {
   // Try using find_as first to avoid creating extra value handles just for the
