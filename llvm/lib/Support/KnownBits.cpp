@@ -69,6 +69,7 @@ KnownBits KnownBits::computeForAddSub(bool Add, bool NSW, bool NUW,
                                     /*CarryOne*/ true);
   }
   NUW = false;
+  NSW = false;
   if (!NSW && !NUW)
     return KnownOut;
 
