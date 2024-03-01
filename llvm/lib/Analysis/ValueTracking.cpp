@@ -358,7 +358,7 @@ static void computeKnownBitsAddSub(bool Add, const Value *Op0, const Value *Op1,
 
   // If one operand is unknown and we have no nowrap information,
   // the result will be unknown independently of the second operand.
-  if (KnownOut.isUnknown() && !NSW && !NUW)
+  if (KnownOut.isUnknown() && !NSW)
     return;
 
   computeKnownBits(Op0, DemandedElts, Known2, Depth + 1, Q);
