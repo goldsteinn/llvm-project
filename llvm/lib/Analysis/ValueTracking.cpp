@@ -1108,8 +1108,9 @@ static void computeKnownBitsFromOperator(const Operator *I,
     break;
   }
   case Instruction::Shl: {
-    bool NUW = Q.IIQ.hasNoUnsignedWrap(cast<OverflowingBinaryOperator>(I));
-    bool NSW = Q.IIQ.hasNoSignedWrap(cast<OverflowingBinaryOperator>(I));
+    auto *OBO = cast<OverflowingBinaryOperator>(I);
+    bool NUW = Q.IIQ.hasNoUnsignedWrap(OBO);
+    bool NSW = Q.IIQ.hasNoSignedWrap(OBO);
     auto KF = [NUW, NSW](const KnownBits &KnownVal, const KnownBits &KnownAmt,
                          bool ShAmtNonZero) {
       return KnownBits::shl(KnownVal, KnownAmt, NUW, NSW, ShAmtNonZero);
@@ -1145,15 +1146,17 @@ static void computeKnownBitsFromOperator(const Operator *I,
     break;
   }
   case Instruction::Sub: {
-    bool NSW = Q.IIQ.hasNoSignedWrap(cast<OverflowingBinaryOperator>(I));
-    bool NUW = Q.IIQ.hasNoUnsignedWrap(cast<OverflowingBinaryOperator>(I));
+    auto *OBO = cast<OverflowingBinaryOperator>(I);
+    bool NUW = Q.IIQ.hasNoUnsignedWrap(OBO);
+    bool NSW = Q.IIQ.hasNoSignedWrap(OBO);
     computeKnownBitsAddSub(false, I->getOperand(0), I->getOperand(1), NSW, NUW,
                            DemandedElts, Known, Known2, Depth, Q);
     break;
   }
   case Instruction::Add: {
-    bool NSW = Q.IIQ.hasNoSignedWrap(cast<OverflowingBinaryOperator>(I));
-    bool NUW = Q.IIQ.hasNoUnsignedWrap(cast<OverflowingBinaryOperator>(I));
+    auto *OBO = cast<OverflowingBinaryOperator>(I);
+    bool NUW = Q.IIQ.hasNoUnsignedWrap(OBO);
+    bool NSW = Q.IIQ.hasNoSignedWrap(OBO);
     computeKnownBitsAddSub(true, I->getOperand(0), I->getOperand(1), NSW, NUW,
                            DemandedElts, Known, Known2, Depth, Q);
     break;
@@ -2746,8 +2749,8 @@ static bool isKnownNonZeroFromOperator(const Operator *I,
       }
         [[fallthrough]];
       case Intrinsic::umin:
-        return isKnownNonZero(II->getArgOperand(0), DemandedElts, Depth, Q) &&
-               isKnownNonZero(II->getArgOperand(1), DemandedElts, Depth, Q);
+        return isKnownNonZero(II->getArgOperand(1), DemandedElts, Depth, Q) &&
+               isKnownNonZero(II->getArgOperand(0), DemandedElts, Depth, Q);
       case Intrinsic::cttz:
         return computeKnownBits(II->getArgOperand(0), DemandedElts, Depth, Q)
             .Zero[0];
