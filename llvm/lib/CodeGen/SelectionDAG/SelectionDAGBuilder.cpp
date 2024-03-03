@@ -2487,6 +2487,9 @@ bool SelectionDAGBuilder::shouldKeepJumpConditionsTogether(
   if (I.getNumSuccessors() != 2)
     return false;
 
+  if (!I.isConditional())
+    return false;
+
   if (Params.BaseCost < 0)
     return false;
 
@@ -2546,11 +2549,12 @@ bool SelectionDAGBuilder::shouldKeepJumpConditionsTogether(
   InstructionCost CostOfIncluding = 0;
   // See if this instruction will need to computed independently of whether RHS
   // is.
-  auto ShouldCountInsn = [&RhsDeps](const Instruction *Ins) {
+  Value *BrCond = I.getCondition();
+  auto ShouldCountInsn = [&RhsDeps, &BrCond](const Instruction *Ins) {
     for (const auto *U : Ins->users()) {
       // If user is independent of RHS calculation we don't need to count it.
       if (auto *UIns = dyn_cast<Instruction>(U))
-        if (!RhsDeps.contains(UIns))
+        if (UIns != BrCond && !RhsDeps.contains(UIns))
           return false;
     }
     return true;
