@@ -78,7 +78,7 @@ static cl::opt<int> ExperimentalPrefInnermostLoopAlignment(
     cl::Hidden);
 
 static cl::opt<int> BrMergingBaseCostThresh(
-    "x86-br-merging-base-cost", cl::init(3),
+    "x86-br-merging-base-cost", cl::init(4),
     cl::desc(
         "Sets the cost threshold for when multiple conditionals will be merged "
         "into one branch versus be split in multiple branches. Merging "
