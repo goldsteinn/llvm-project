@@ -142,6 +142,8 @@ KnownBits KnownBits::computeForAddSub(bool Add, bool NSW, bool NUW,
 
 KnownBits KnownBits::computeForSubBorrow(const KnownBits &LHS, KnownBits RHS,
                                          const KnownBits &Borrow) {
+  if (LHS.isUnknown() && RHS.isUnknown())
+    return LHS;
   assert(Borrow.getBitWidth() == 1 && "Borrow must be 1-bit");
 
   // LHS - RHS = LHS + ~RHS + 1
@@ -232,6 +234,8 @@ KnownBits KnownBits::smin(const KnownBits &LHS, const KnownBits &RHS) {
 }
 
 KnownBits KnownBits::absdiff(const KnownBits &LHS, const KnownBits &RHS) {
+  if (LHS.isUnknown() && RHS.isUnknown())
+    return LHS;
   // absdiff(LHS,RHS) = sub(umax(LHS,RHS), umin(LHS,RHS)).
   KnownBits UMaxValue = umax(LHS, RHS);
   KnownBits UMinValue = umin(LHS, RHS);
@@ -259,6 +263,8 @@ static unsigned getMaxShiftAmount(const APInt &MaxValue, unsigned BitWidth) {
 
 KnownBits KnownBits::shl(const KnownBits &LHS, const KnownBits &RHS, bool NUW,
                          bool NSW, bool ShAmtNonZero) {
+  if (LHS.isUnknown() && RHS.isUnknown())
+    return LHS;
   unsigned BitWidth = LHS.getBitWidth();
   auto ShiftByConst = [&](const KnownBits &LHS, unsigned ShiftAmt) {
     KnownBits Known;
@@ -344,6 +350,8 @@ KnownBits KnownBits::shl(const KnownBits &LHS, const KnownBits &RHS, bool NUW,
 
 KnownBits KnownBits::lshr(const KnownBits &LHS, const KnownBits &RHS,
                           bool ShAmtNonZero) {
+  if (LHS.isUnknown() && RHS.isUnknown())
+    return LHS;
   unsigned BitWidth = LHS.getBitWidth();
   auto ShiftByConst = [&](const KnownBits &LHS, unsigned ShiftAmt) {
     KnownBits Known = LHS;
@@ -390,6 +398,8 @@ KnownBits KnownBits::lshr(const KnownBits &LHS, const KnownBits &RHS,
 
 KnownBits KnownBits::ashr(const KnownBits &LHS, const KnownBits &RHS,
                           bool ShAmtNonZero) {
+  if (LHS.isUnknown() && RHS.isUnknown())
+    return LHS;
   unsigned BitWidth = LHS.getBitWidth();
   auto ShiftByConst = [&](const KnownBits &LHS, unsigned ShiftAmt) {
     KnownBits Known = LHS;
@@ -502,9 +512,14 @@ KnownBits KnownBits::abs(bool IntMinIsPoison) const {
   // If the source's MSB is zero then we know the rest of the bits already.
   if (isNonNegative())
     return *this;
-
   // Absolute value preserves trailing zero count.
   KnownBits KnownAbs(getBitWidth());
+
+  if (isUnknown()) {
+    if (IntMinIsPoison)
+      KnownAbs.makeNonNegative();
+    return KnownAbs;
+  }
 
   // If the input is negative, then abs(x) == -x.
   if (isNegative()) {
@@ -560,12 +575,15 @@ KnownBits KnownBits::abs(bool IntMinIsPoison) const {
 static KnownBits computeForSatAddSub(bool Add, bool Signed,
                                      const KnownBits &LHS,
                                      const KnownBits &RHS) {
+  if (LHS.isUnknown() && RHS.isUnknown())
+    return LHS;
   assert(!LHS.hasConflict() && !RHS.hasConflict() && "Bad inputs");
   // We don't see NSW even for sadd/ssub as we want to check if the result has
   // signed overflow.
   KnownBits Res =
       KnownBits::computeForAddSub(Add, /*NSW=*/false, /*NUW=*/false, LHS, RHS);
   unsigned BitWidth = Res.getBitWidth();
+
   auto SignBitKnown = [&](const KnownBits &K) {
     return K.Zero[BitWidth - 1] || K.One[BitWidth - 1];
   };
@@ -721,6 +739,8 @@ KnownBits KnownBits::usub_sat(const KnownBits &LHS, const KnownBits &RHS) {
 
 KnownBits KnownBits::mul(const KnownBits &LHS, const KnownBits &RHS,
                          bool NoUndefSelfMultiply) {
+  if (LHS.isUnknown() && RHS.isUnknown())
+    return LHS;
   unsigned BitWidth = LHS.getBitWidth();
   assert(BitWidth == RHS.getBitWidth() && !LHS.hasConflict() &&
          !RHS.hasConflict() && "Operand mismatch");
@@ -873,6 +893,8 @@ static KnownBits divComputeLowBit(KnownBits Known, const KnownBits &LHS,
 
 KnownBits KnownBits::sdiv(const KnownBits &LHS, const KnownBits &RHS,
                           bool Exact) {
+  if (LHS.isUnknown() && RHS.isUnknown())
+    return LHS;
   // Equivalent of `udiv`. We must have caught this before it was folded.
   if (LHS.isNonNegative() && RHS.isNonNegative())
     return udiv(LHS, RHS, Exact);
@@ -932,6 +954,8 @@ KnownBits KnownBits::sdiv(const KnownBits &LHS, const KnownBits &RHS,
 
 KnownBits KnownBits::udiv(const KnownBits &LHS, const KnownBits &RHS,
                           bool Exact) {
+  if (LHS.isUnknown() && RHS.isUnknown())
+    return LHS;
   unsigned BitWidth = LHS.getBitWidth();
   assert(!LHS.hasConflict() && !RHS.hasConflict());
   KnownBits Known(BitWidth);
@@ -973,6 +997,8 @@ KnownBits KnownBits::remGetLowBits(const KnownBits &LHS, const KnownBits &RHS) {
 }
 
 KnownBits KnownBits::urem(const KnownBits &LHS, const KnownBits &RHS) {
+  if (LHS.isUnknown() && RHS.isUnknown())
+    return LHS;
   assert(!LHS.hasConflict() && !RHS.hasConflict());
 
   KnownBits Known = remGetLowBits(LHS, RHS);
