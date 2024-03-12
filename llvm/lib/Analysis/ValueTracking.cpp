@@ -1026,7 +1026,8 @@ static void computeKnownBitsFromOperator(const Operator *I,
     auto ComputeForArm = [&](Value *Arm, bool Invert) {
       KnownBits Res(Known.getBitWidth());
       computeKnownBits(Arm, Res, Depth + 1, Q);
-      if (isGuaranteedNotToBeUndef(Arm, Q.AC, Q.CxtI, Q.DT, MaxAnalysisRecursionDepth - 1)) {
+      if (!Res.isConstant() &&
+          isGuaranteedNotToBeUndef(Arm, Q.AC, Q.CxtI, Q.DT, Depth + 1)) {
         // See what condition implies about the bits of the two select arms.
         computeKnownBitsFromCond(Arm, I->getOperand(0), Res, Depth + 1, Q,
                                  Invert);
