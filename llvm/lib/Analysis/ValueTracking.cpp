@@ -1028,16 +1028,18 @@ static void computeKnownBitsFromOperator(const Operator *I,
       computeKnownBits(Arm, Res, Depth + 1, Q);
       if (!Res.isConstant() &&
           isGuaranteedNotToBeUndef(Arm, Q.AC, Q.CxtI, Q.DT, Depth + 1)) {
+        KnownBits Res2(Known.getBitWidth());
         // See what condition implies about the bits of the two select arms.
-        computeKnownBitsFromCond(Arm, I->getOperand(0), Res, Depth + 1, Q,
+        computeKnownBitsFromCond(Arm, I->getOperand(0), Res2, Depth + 1, Q,
                                  Invert);
         // We can have conflict if the condition is dead. I.e if we have
         // (x | 64) < 32 ? (x | 64) : y
         // we will have conflict at bit 6 from the condition/the `or`.
         // In that case, we just reset. Its not particularly important
         // what we do, as this select is going to be simplified soon.
-        if (Res.hasConflict())
-          Res.resetAll();
+        Res2 = Res.unionWith(Res2);
+        if (!Res2.hasConflict())
+          Res = Res2;
       }
       return Res;
     };
