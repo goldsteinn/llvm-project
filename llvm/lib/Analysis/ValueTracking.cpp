@@ -621,7 +621,12 @@ static bool isKnownNonZeroFromAssume(const Value *V, const SimplifyQuery &Q) {
 
 static void computeKnownBitsFromCmp(const Value *V, CmpInst::Predicate Pred,
                                     Value *LHS, Value *RHS, KnownBits &Known,
-                                    const SimplifyQuery &Q) {
+                                    const SimplifyQuery &Q,
+                                    bool NonZeroOnly = false) {
+  if (NonZeroOnly && cmpExcludesZero(Pred, RHS)) {
+    Known.setAllOnes();
+    return;
+  }
   if (RHS->getType()->isPointerTy()) {
     // Handle comparison of pointer to null explicitly, as it will not be
     // covered by the m_APInt() logic below.
@@ -712,7 +717,8 @@ static void computeKnownBitsFromCmp(const Value *V, CmpInst::Predicate Pred,
 
 static void computeKnownBitsFromICmpCond(const Value *V, ICmpInst *Cmp,
                                          KnownBits &Known,
-                                         const SimplifyQuery &SQ, bool Invert) {
+                                         const SimplifyQuery &SQ, bool Invert,
+                                         bool NonZeroOnly = false) {
   ICmpInst::Predicate Pred =
       Invert ? Cmp->getInversePredicate() : Cmp->getPredicate();
   Value *LHS = Cmp->getOperand(0);
@@ -721,34 +727,38 @@ static void computeKnownBitsFromICmpCond(const Value *V, ICmpInst *Cmp,
   // Handle icmp pred (trunc V), C
   if (match(LHS, m_Trunc(m_Specific(V)))) {
     KnownBits DstKnown(LHS->getType()->getScalarSizeInBits());
-    computeKnownBitsFromCmp(LHS, Pred, LHS, RHS, DstKnown, SQ);
+    computeKnownBitsFromCmp(LHS, Pred, LHS, RHS, DstKnown, SQ, NonZeroOnly);
     Known = Known.unionWith(DstKnown.anyext(Known.getBitWidth()));
     return;
   }
 
-  computeKnownBitsFromCmp(V, Pred, LHS, RHS, Known, SQ);
+  computeKnownBitsFromCmp(V, Pred, LHS, RHS, Known, SQ, NonZeroOnly);
 }
 
 static void computeKnownBitsFromCond(const Value *V, Value *Cond,
                                      KnownBits &Known, unsigned Depth,
-                                     const SimplifyQuery &SQ, bool Invert) {
+                                     const SimplifyQuery &SQ, bool Invert,
+                                     bool NonZeroOnly = false) {
   Value *A, *B;
   if (Depth < MaxAnalysisRecursionDepth &&
       match(Cond, m_LogicalOp(m_Value(A), m_Value(B)))) {
     KnownBits Known2(Known.getBitWidth());
     KnownBits Known3(Known.getBitWidth());
-    computeKnownBitsFromCond(V, A, Known2, Depth + 1, SQ, Invert);
-    computeKnownBitsFromCond(V, B, Known3, Depth + 1, SQ, Invert);
+    computeKnownBitsFromCond(V, A, Known2, Depth + 1, SQ, Invert, NonZeroOnly);
+    computeKnownBitsFromCond(V, B, Known3, Depth + 1, SQ, Invert, NonZeroOnly);
     if (Invert ? match(Cond, m_LogicalOr(m_Value(), m_Value()))
                : match(Cond, m_LogicalAnd(m_Value(), m_Value())))
       Known2 = Known2.unionWith(Known3);
     else
       Known2 = Known2.intersectWith(Known3);
     Known = Known.unionWith(Known2);
+
+    if (NonZeroOnly && Known.isNonZero())
+        return;
   }
 
   if (auto *Cmp = dyn_cast<ICmpInst>(Cond))
-    computeKnownBitsFromICmpCond(V, Cmp, Known, SQ, Invert);
+    computeKnownBitsFromICmpCond(V, Cmp, Known, SQ, Invert, NonZeroOnly);
 }
 
 void llvm::computeKnownBitsFromContext(const Value *V, KnownBits &Known,
@@ -2222,11 +2232,15 @@ static bool isGEPKnownNonNull(const GEPOperator *GEP, unsigned Depth,
 }
 
 static bool isKnownNonNullFromDominatingCondition(const Value *V,
-                                                  const Instruction *CtxI,
-                                                  const DominatorTree *DT) {
+                                                  unsigned Depth,
+                                                  const SimplifyQuery &Q) {
   assert(!isa<Constant>(V) && "Called for constant?");
 
-  if (!CtxI || !DT)
+  const Instruction *CxtI = Q.CxtI;
+  const DominatorTree *DT = Q.DT;
+  const DomConditionCache *DC = Q.DC;
+
+  if (!CxtI || !DT)
     return false;
 
   unsigned NumUsesExplored = 0;
@@ -2243,7 +2257,7 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
         for (const Argument &Arg : CalledFunc->args())
           if (CB->getArgOperand(Arg.getArgNo()) == V &&
               Arg.hasNonNullAttr(/* AllowUndefOrPoison */ false) &&
-              DT->dominates(CB, CtxI))
+              DT->dominates(CB, CxtI))
             return true;
 
     // If the value is used as a load/store, then the pointer must be non null.
@@ -2251,15 +2265,17 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
       const Instruction *I = cast<Instruction>(U);
       if (!NullPointerIsDefined(I->getFunction(),
                                 V->getType()->getPointerAddressSpace()) &&
-          DT->dominates(I, CtxI))
+          DT->dominates(I, CxtI))
         return true;
     }
 
     if ((match(U, m_IDiv(m_Value(), m_Specific(V))) ||
          match(U, m_IRem(m_Value(), m_Specific(V)))) &&
-        isValidAssumeForContext(cast<Instruction>(U), CtxI, DT))
+        isValidAssumeForContext(cast<Instruction>(U), CxtI, DT))
       return true;
 
+    if (DC)
+      continue;
     // Consider only compare instructions uniquely controlling a branch
     Value *RHS;
     CmpInst::Predicate Pred;
@@ -2302,14 +2318,31 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
           BasicBlock *NonNullSuccessor =
               BI->getSuccessor(NonNullIfTrue ? 0 : 1);
           BasicBlockEdge Edge(BI->getParent(), NonNullSuccessor);
-          if (Edge.isSingleEdge() && DT->dominates(Edge, CtxI->getParent()))
+          if (Edge.isSingleEdge() && DT->dominates(Edge, CxtI->getParent()))
             return true;
         } else if (NonNullIfTrue && isGuard(Curr) &&
-                   DT->dominates(cast<Instruction>(Curr), CtxI)) {
+                   DT->dominates(cast<Instruction>(Curr), CxtI)) {
           return true;
         }
       }
     }
+  }
+  if (DC) {
+    KnownBits Known(getBitWidth(V->getType()->getScalarType(), Q.DL));
+    // Handle dominating conditions.
+    for (BranchInst *BI : DC->conditionsFor(V)) {
+      BasicBlockEdge Edge0(BI->getParent(), BI->getSuccessor(0));
+      if (Q.DT->dominates(Edge0, CxtI->getParent()))
+        computeKnownBitsFromCond(V, BI->getCondition(), Known, Depth, Q,
+                                 /*Invert*/ false, /*NonZeroOnly=*/true);
+
+      BasicBlockEdge Edge1(BI->getParent(), BI->getSuccessor(1));
+      if (DT->dominates(Edge1, CxtI->getParent()))
+        computeKnownBitsFromCond(V, BI->getCondition(), Known, Depth, Q,
+                                 /*Invert*/ true, /*NonZeroOnly=*/true);
+    }
+    if (Known.isNonZero())
+      return true;
   }
 
   return false;
@@ -2917,8 +2950,7 @@ bool isKnownNonZero(const Value *V, const APInt &DemandedElts, unsigned Depth,
     if (isKnownNonZeroFromOperator(I, DemandedElts, Depth, Q))
       return true;
 
-  if (!isa<Constant>(V) &&
-      isKnownNonNullFromDominatingCondition(V, Q.CxtI, Q.DT))
+  if (!isa<Constant>(V) && isKnownNonNullFromDominatingCondition(V, Depth, Q))
     return true;
 
   return false;
