@@ -2243,6 +2243,16 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
   if (!CxtI || !DT)
     return false;
 
+  DenseMap<const BasicBlock *, bool> DomBBs;
+  auto DominatesCxtI = [CxtI, DT, &DomBBs](const Instruction *Def) {
+    if (CxtI->getParent() == Def->getParent())
+      return DT->dominates(Def, CxtI);
+    auto Res = DomBBs.try_emplace(Def->getParent(), false);
+    if (Res.second)
+      Res.first->second = DT->dominates(Def, CxtI);
+    return Res.first->second;
+  };
+
   unsigned NumUsesExplored = 0;
   for (const auto *U : V->users()) {
     // Avoid massive lists
@@ -2257,7 +2267,7 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
         for (const Argument &Arg : CalledFunc->args())
           if (CB->getArgOperand(Arg.getArgNo()) == V &&
               Arg.hasNonNullAttr(/* AllowUndefOrPoison */ false) &&
-              DT->dominates(CB, CxtI))
+              DominatesCxtI(CB))
             return true;
 
     // If the value is used as a load/store, then the pointer must be non null.
@@ -2265,7 +2275,7 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
       const Instruction *I = cast<Instruction>(U);
       if (!NullPointerIsDefined(I->getFunction(),
                                 V->getType()->getPointerAddressSpace()) &&
-          DT->dominates(I, CxtI))
+          DominatesCxtI(I))
         return true;
     }
 
@@ -2321,7 +2331,7 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
           if (Edge.isSingleEdge() && DT->dominates(Edge, CxtI->getParent()))
             return true;
         } else if (NonNullIfTrue && isGuard(Curr) &&
-                   DT->dominates(cast<Instruction>(Curr), CxtI)) {
+                   DominatesCxtI(cast<Instruction>(Curr))) {
           return true;
         }
       }
