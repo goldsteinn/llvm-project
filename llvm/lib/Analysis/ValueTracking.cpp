@@ -2275,9 +2275,9 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
       continue;
 
     bool NonNullIfTrue;
-    if (cmpExcludesZero(Pred, RHS))
+    if (cmpExcludesZero(Pred, RHS, true))
       NonNullIfTrue = true;
-    else if (cmpExcludesZero(CmpInst::getInversePredicate(Pred), RHS))
+    else if (cmpExcludesZero(CmpInst::getInversePredicate(Pred), RHS, true))
       NonNullIfTrue = false;
     else
       continue;
