@@ -541,10 +541,13 @@ bool llvm::isValidAssumeForContext(const Instruction *Inv,
 // example Pred=EQ, RHS=isKnownNonZero. cmpExcludesZero is called in loops
 // so the extra compile time may not be worth it, but possibly a second API
 // should be created for use outside of loops.
-static bool cmpExcludesZero(CmpInst::Predicate Pred, const Value *RHS) {
+static bool cmpExcludesZero(CmpInst::Predicate Pred, const Value *RHS,
+                            bool TryConstantRange = false) {
   // v u> y implies v != 0.
   if (Pred == ICmpInst::ICMP_UGT)
     return true;
+
+
 
   // Special-case v != 0 to also handle v != null.
   if (Pred == ICmpInst::ICMP_NE)
@@ -558,18 +561,23 @@ static bool cmpExcludesZero(CmpInst::Predicate Pred, const Value *RHS) {
     return !TrueValues.contains(Zero);
   }
 
-  auto *VC = dyn_cast<ConstantDataVector>(RHS);
-  if (VC == nullptr)
-    return false;
-
-  for (unsigned ElemIdx = 0, NElem = VC->getNumElements(); ElemIdx < NElem;
-       ++ElemIdx) {
-    ConstantRange TrueValues = ConstantRange::makeExactICmpRegion(
-        Pred, VC->getElementAsAPInt(ElemIdx));
-    if (TrueValues.contains(Zero))
-      return false;
+  if (auto *VC = dyn_cast<ConstantDataVector>(RHS)) {
+    for (unsigned ElemIdx = 0, NElem = VC->getNumElements(); ElemIdx < NElem;
+         ++ElemIdx) {
+      ConstantRange TrueValues = ConstantRange::makeExactICmpRegion(
+          Pred, VC->getElementAsAPInt(ElemIdx));
+      if (TrueValues.contains(Zero))
+       return false;
+    }
+    return true;
   }
-  return true;
+
+  if (RHS->getType()->isIntOrIntVectorTy()) {
+    ConstantRange RHSRange =
+        computeConstantRange(RHS, ICmpInst::isSigned(Pred));
+    return !ConstantRange::makeAllowedICmpRegion(Pred, RHSRange).contains(Zero);
+  }
+  return false;
 }
 
 static bool isKnownNonZeroFromAssume(const Value *V, const SimplifyQuery &Q) {
@@ -5709,7 +5717,7 @@ llvm::FindInsertedValue(Value *V, ArrayRef<unsigned> idx_range,
       // looking for, then.
       if (*req_idx != *i)
         return FindInsertedValue(I->getAggregateOperand(), idx_range,
-                                 InsertBefore);
+                                 *InsertBefore);
     }
     // If we end up here, the indices of the insertvalue match with those
     // requested (though possibly only partially). Now we recursively look at
