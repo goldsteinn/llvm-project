@@ -2672,7 +2672,7 @@ static bool isKnownNonZeroFromOperator(const Operator *I,
       if (!IsTrueArm)
         Pred = ICmpInst::getInversePredicate(Pred);
 
-      return cmpExcludesZero(Pred, X);
+      return cmpExcludesZero(Pred, X, true);
     };
 
     if (SelectArmIsNonZero(/* IsTrueArm */ true) &&
@@ -2704,7 +2704,7 @@ static bool isKnownNonZeroFromOperator(const Operator *I,
           // If we're using the false successor, invert the predicate.
           if (FalseSucc == PN->getParent())
             Pred = CmpInst::getInversePredicate(Pred);
-          if (cmpExcludesZero(Pred, X))
+          if (cmpExcludesZero(Pred, X, true))
             return true;
         }
       }
