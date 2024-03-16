@@ -560,4 +560,217 @@ define i1 @same_ops_with_constant_wrong_sign(i8 %x) {
   ret i1 %res
 }
 
-declare void @llvm.assume(i1)
+define i1 @or_both_imply_false(i32 %a, i32 %b) {
+; CHECK-LABEL: @or_both_imply_false(
+; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i32 [[A]], 1
+; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP0]], i1 true, i1 [[CMP1]]
+; CHECK-NEXT:    br i1 [[OR_COND]], label [[T:%.*]], label [[F:%.*]]
+; CHECK:       T:
+; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], 0
+; CHECK-NEXT:    ret i1 [[CMP2]]
+; CHECK:       F:
+; CHECK-NEXT:    ret i1 true
+;
+  %cmp0 = icmp ugt i32 %a, %b
+  %cmp1 = icmp eq i32 %a, 1
+  %or.cond = select i1 %cmp0, i1 true, i1 %cmp1
+  br i1 %or.cond, label %T, label %F
+
+T:
+  %cmp2 = icmp eq i32 %a, 0
+  ret i1 %cmp2
+
+F:
+  ret i1 true
+}
+
+define i1 @or_both_imply_true(i32 %a, i32 %b) {
+; CHECK-LABEL: @or_both_imply_true(
+; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i32 [[A]], 1
+; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP0]], i1 true, i1 [[CMP1]]
+; CHECK-NEXT:    br i1 [[OR_COND]], label [[T:%.*]], label [[F:%.*]]
+; CHECK:       T:
+; CHECK-NEXT:    [[CMP2:%.*]] = icmp ne i32 [[A]], 0
+; CHECK-NEXT:    ret i1 [[CMP2]]
+; CHECK:       F:
+; CHECK-NEXT:    ret i1 true
+;
+  %cmp0 = icmp ugt i32 %a, %b
+  %cmp1 = icmp eq i32 %a, 1
+  %or.cond = select i1 %cmp0, i1 true, i1 %cmp1
+  br i1 %or.cond, label %T, label %F
+
+T:
+  %cmp2 = icmp ne i32 %a, 0
+  ret i1 %cmp2
+
+F:
+  ret i1 true
+}
+
+define i1 @or_one_imples_fail(i32 %a, i32 %b) {
+; CHECK-LABEL: @or_one_imples_fail(
+; CHECK-NEXT:    [[CMP0:%.*]] = icmp uge i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i32 [[A]], 1
+; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP0]], i1 true, i1 [[CMP1]]
+; CHECK-NEXT:    br i1 [[OR_COND]], label [[T:%.*]], label [[F:%.*]]
+; CHECK:       T:
+; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], 0
+; CHECK-NEXT:    ret i1 [[CMP2]]
+; CHECK:       F:
+; CHECK-NEXT:    ret i1 true
+;
+  %cmp0 = icmp uge i32 %a, %b
+  %cmp1 = icmp eq i32 %a, 1
+  %or.cond = select i1 %cmp0, i1 true, i1 %cmp1
+  br i1 %or.cond, label %T, label %F
+
+T:
+  %cmp2 = icmp eq i32 %a, 0
+  ret i1 %cmp2
+
+F:
+  ret i1 true
+}
+
+define i1 @or_one_imples_fail2(i32 %a, i32 %b) {
+; CHECK-LABEL: @or_one_imples_fail2(
+; CHECK-NEXT:    [[CMP0:%.*]] = icmp ugt i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    [[CMP1:%.*]] = icmp ne i32 [[A]], 1
+; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP0]], i1 true, i1 [[CMP1]]
+; CHECK-NEXT:    br i1 [[OR_COND]], label [[T:%.*]], label [[F:%.*]]
+; CHECK:       T:
+; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], 0
+; CHECK-NEXT:    ret i1 [[CMP2]]
+; CHECK:       F:
+; CHECK-NEXT:    ret i1 true
+;
+  %cmp0 = icmp ugt i32 %a, %b
+  %cmp1 = icmp ne i32 %a, 1
+  %or.cond = select i1 %cmp0, i1 true, i1 %cmp1
+  br i1 %or.cond, label %T, label %F
+
+T:
+  %cmp2 = icmp eq i32 %a, 0
+  ret i1 %cmp2
+
+F:
+  ret i1 true
+}
+
+define i1 @and_imples_false(i32 %a, i32 %b, i1 %cond) {
+; CHECK-LABEL: @and_imples_false(
+; CHECK-NEXT:    [[CMP0:%.*]] = icmp uge i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    [[CMP1:%.*]] = icmp sge i32 [[A]], -10
+; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP1]], i1 [[CMP0]], i1 false
+; CHECK-NEXT:    br i1 [[OR_COND]], label [[T:%.*]], label [[F:%.*]]
+; CHECK:       T:
+; CHECK-NEXT:    ret i1 true
+; CHECK:       F:
+; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], -1
+; CHECK-NEXT:    ret i1 [[CMP2]]
+;
+  %cmp0 = icmp uge i32 %a, %b
+  %cmp1 = icmp sge i32 %a, -10
+  %or.cond = select i1 %cmp1, i1 %cmp0, i1 false
+  br i1 %or.cond, label %T, label %F
+
+T:
+  ret i1 true
+
+F:
+  %cmp2 = icmp eq i32 %a, -1
+  ret i1 %cmp2
+
+}
+
+define i1 @and_imples_fail1(i32 %a, i32 %b, i1 %cond) {
+; CHECK-LABEL: @and_imples_fail1(
+; CHECK-NEXT:    [[CMP0:%.*]] = icmp uge i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    [[CMP1:%.*]] = icmp sle i32 [[A]], -10
+; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP1]], i1 [[CMP0]], i1 false
+; CHECK-NEXT:    br i1 [[OR_COND]], label [[T:%.*]], label [[F:%.*]]
+; CHECK:       T:
+; CHECK-NEXT:    ret i1 true
+; CHECK:       F:
+; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], -1
+; CHECK-NEXT:    ret i1 [[CMP2]]
+;
+  %cmp0 = icmp uge i32 %a, %b
+  %cmp1 = icmp sle i32 %a, -10
+  %or.cond = select i1 %cmp1, i1 %cmp0, i1 false
+  br i1 %or.cond, label %T, label %F
+
+T:
+  ret i1 true
+
+F:
+  %cmp2 = icmp eq i32 %a, -1
+  ret i1 %cmp2
+}
+
+define i1 @imply_pow2_or_zero(i32 %a) {
+; CHECK-LABEL: @imply_pow2_or_zero(
+; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i32 [[A:%.*]], 0
+; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], 32
+; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP1]], i1 true, i1 [[CMP2]]
+; CHECK-NEXT:    [[CMP3:%.*]] = icmp ult i32 [[A]], 35
+; CHECK-NEXT:    [[BRMERGE:%.*]] = or i1 [[OR_COND]], [[CMP3]]
+; CHECK-NEXT:    ret i1 [[BRMERGE]]
+;
+  %cmp1 = icmp eq i32 %a, 0
+  %cmp2 = icmp eq i32 %a, 32
+  %or.cond = select i1 %cmp1, i1 true, i1 %cmp2
+  %cmp3 = icmp ult i32 %a, 35
+  %brmerge = or i1 %or.cond, %cmp3
+  ret i1 %brmerge
+}
+
+define i1 @imply_npow2_and_nzero(i32 %a) {
+; CHECK-LABEL: @imply_npow2_and_nzero(
+; CHECK-NEXT:    [[CMP1:%.*]] = icmp ne i32 [[A:%.*]], 0
+; CHECK-NEXT:    [[CMP2:%.*]] = icmp ne i32 [[A]], 32
+; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP1]], i1 [[CMP2]], i1 false
+; CHECK-NEXT:    [[CMP3:%.*]] = icmp ugt i32 [[A]], 35
+; CHECK-NEXT:    [[BRMERGE:%.*]] = and i1 [[OR_COND]], [[CMP3]]
+; CHECK-NEXT:    ret i1 [[BRMERGE]]
+;
+  %cmp1 = icmp ne i32 %a, 0
+  %cmp2 = icmp ne i32 %a, 32
+  %or.cond = select i1 %cmp1, i1 %cmp2, i1 false
+  %cmp3 = icmp ugt i32 %a, 35
+  %brmerge = and i1 %or.cond, %cmp3
+  ret i1 %brmerge
+}
+
+define i1 @imply_or(i32 %a, i32 %b) {
+; CHECK-LABEL: @imply_or(
+; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i32 [[A:%.*]], 0
+; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], [[B:%.*]]
+; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP1]], i1 true, i1 [[CMP2]]
+; CHECK-NEXT:    [[CMP3:%.*]] = icmp ule i32 [[A]], [[B]]
+; CHECK-NEXT:    [[BRMERGE:%.*]] = or i1 [[OR_COND]], [[CMP3]]
+; CHECK-NEXT:    ret i1 [[BRMERGE]]
+;
+  %cmp1 = icmp eq i32 %a, 0
+  %cmp2 = icmp eq i32 %a, %b
+  %or.cond = select i1 %cmp1, i1 true, i1 %cmp2
+  %cmp3 = icmp ule i32 %a, %b
+  %brmerge = or i1 %or.cond, %cmp3
+  ret i1 %brmerge
+}
+
+define i1 @imply_and(i32 %a, i32 %b) {
+; CHECK-LABEL: @imply_and(
+; CHECK-NEXT:    [[CMP3:%.*]] = icmp sgt i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    ret i1 [[CMP3]]
+;
+  %cmp1 = icmp ne i32 %a, -2147483648
+  %cmp2 = icmp ne i32 %a, %b
+  %or.cond = select i1 %cmp1, i1 true, i1 %cmp2
+  %cmp3 = icmp sgt i32 %a, %b
+  %brmerge = and i1 %or.cond, %cmp3
+  ret i1 %brmerge
+}
