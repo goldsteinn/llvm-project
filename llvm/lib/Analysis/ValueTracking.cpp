@@ -8499,20 +8499,22 @@ isImpliedCondMatchingOperands(CmpInst::Predicate LPred,
   return std::nullopt;
 }
 
-/// Return true if "icmp LPred X, LC" implies "icmp RPred X, RC" is true.
-/// Return false if "icmp LPred X, LC" implies "icmp RPred X, RC" is false.
+/// Return true if "icmp LPred X, LCR" implies "icmp RPred X, RCR" is true.
+/// Return false if "icmp LPred X, LCR" implies "icmp RPred X, RCR" is false.
 /// Otherwise, return std::nullopt if we can't infer anything.
-static std::optional<bool> isImpliedCondCommonOperandWithConstants(
-    CmpInst::Predicate LPred, const APInt &LC, CmpInst::Predicate RPred,
-    const APInt &RC) {
-  ConstantRange DomCR = ConstantRange::makeExactICmpRegion(LPred, LC);
-  ConstantRange CR = ConstantRange::makeExactICmpRegion(RPred, RC);
-  ConstantRange Intersection = DomCR.intersectWith(CR);
-  ConstantRange Difference = DomCR.difference(CR);
-  if (Intersection.isEmptySet())
-    return false;
-  if (Difference.isEmptySet())
+static std::optional<bool>
+isImpliedCondCommonOperandWithCR(CmpInst::Predicate LPred, ConstantRange LCR,
+                                 CmpInst::Predicate RPred, ConstantRange RCR) {
+  ConstantRange DomCR = ConstantRange::makeAllowedICmpRegion(LPred, LCR);
+  bool IsImpliedT = DomCR.icmp(RPred, RCR);
+  // If all true values for lhs and true for rhs, lhs implies rhs
+  if (IsImpliedT)
     return true;
+
+  bool IsImpliedF = DomCR.icmp(CmpInst::getInversePredicate(RPred), RCR);
+  // If there is no overlap, lhs implies not rhs
+  if (IsImpliedF)
+    return false;
   return std::nullopt;
 }
 
@@ -8532,11 +8534,36 @@ static std::optional<bool> isImpliedCondICmps(const ICmpInst *LHS,
   CmpInst::Predicate LPred =
       LHSIsTrue ? LHS->getPredicate() : LHS->getInversePredicate();
 
-  // Can we infer anything when the 0-operands match and the 1-operands are
-  // constants (not necessarily matching)?
+  if (L0 == R1) {
+    std::swap(R0, R1);
+    RPred = ICmpInst::getSwappedPredicate(RPred);
+  }
+  if (L1 == R0) {
+    std::swap(L0, L1);
+    LPred = ICmpInst::getSwappedPredicate(LPred);
+  }
+
+  // See if we can infer anything if operand-0 matches and we have at least one
+  // constant operand-1.
   const APInt *LC, *RC;
-  if (L0 == R0 && match(L1, m_APInt(LC)) && match(R1, m_APInt(RC)))
-    return isImpliedCondCommonOperandWithConstants(LPred, *LC, RPred, *RC);
+  if (L0 == R0 && (match(L1, m_APInt(LC)) || match(R1, m_APInt(RC)))) {
+    ConstantRange LCR =
+        match(L1, m_APInt(LC))
+            ? ConstantRange(*LC)
+            : ConstantRange::getFull(L1->getType()->getScalarSizeInBits());
+    ConstantRange RCR =
+        match(R1, m_APInt(RC))
+            ? ConstantRange(*RC)
+            : ConstantRange::getFull(R1->getType()->getScalarSizeInBits());
+    // Even if L1/R1 are not both constant, we can still sometimes deduce
+    // relationship from a single constant. For example X u> Y implies X != 0.
+    if (auto R = isImpliedCondCommonOperandWithCR(LPred, LCR, RPred, RCR))
+      return R;
+    // If both L1/R1 where constant and we didn't get anything here, we won't be
+    // able to deduce this.
+    if (match(L1, m_APInt(LC)) && match(R1, m_APInt(RC)))
+      return std::nullopt;
+  }
 
   // Can we infer anything when the two compares have matching operands?
   bool AreSwappedOps;
