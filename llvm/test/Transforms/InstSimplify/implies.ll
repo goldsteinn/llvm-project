@@ -710,12 +710,8 @@ F:
 
 define i1 @imply_pow2_or_zero(i32 %a) {
 ; CHECK-LABEL: @imply_pow2_or_zero(
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i32 [[A:%.*]], 0
-; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], 32
-; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP1]], i1 true, i1 [[CMP2]]
-; CHECK-NEXT:    [[CMP3:%.*]] = icmp ult i32 [[A]], 35
-; CHECK-NEXT:    [[BRMERGE:%.*]] = or i1 [[OR_COND]], [[CMP3]]
-; CHECK-NEXT:    ret i1 [[BRMERGE]]
+; CHECK-NEXT:    [[CMP3:%.*]] = icmp ult i32 [[A:%.*]], 35
+; CHECK-NEXT:    ret i1 [[CMP3]]
 ;
   %cmp1 = icmp eq i32 %a, 0
   %cmp2 = icmp eq i32 %a, 32
@@ -727,12 +723,8 @@ define i1 @imply_pow2_or_zero(i32 %a) {
 
 define i1 @imply_npow2_and_nzero(i32 %a) {
 ; CHECK-LABEL: @imply_npow2_and_nzero(
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp ne i32 [[A:%.*]], 0
-; CHECK-NEXT:    [[CMP2:%.*]] = icmp ne i32 [[A]], 32
-; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP1]], i1 [[CMP2]], i1 false
-; CHECK-NEXT:    [[CMP3:%.*]] = icmp ugt i32 [[A]], 35
-; CHECK-NEXT:    [[BRMERGE:%.*]] = and i1 [[OR_COND]], [[CMP3]]
-; CHECK-NEXT:    ret i1 [[BRMERGE]]
+; CHECK-NEXT:    [[CMP3:%.*]] = icmp ugt i32 [[A:%.*]], 35
+; CHECK-NEXT:    ret i1 [[CMP3]]
 ;
   %cmp1 = icmp ne i32 %a, 0
   %cmp2 = icmp ne i32 %a, 32
@@ -744,12 +736,8 @@ define i1 @imply_npow2_and_nzero(i32 %a) {
 
 define i1 @imply_or(i32 %a, i32 %b) {
 ; CHECK-LABEL: @imply_or(
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i32 [[A:%.*]], 0
-; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], [[B:%.*]]
-; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP1]], i1 true, i1 [[CMP2]]
-; CHECK-NEXT:    [[CMP3:%.*]] = icmp ule i32 [[A]], [[B]]
-; CHECK-NEXT:    [[BRMERGE:%.*]] = or i1 [[OR_COND]], [[CMP3]]
-; CHECK-NEXT:    ret i1 [[BRMERGE]]
+; CHECK-NEXT:    [[CMP3:%.*]] = icmp ule i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    ret i1 [[CMP3]]
 ;
   %cmp1 = icmp eq i32 %a, 0
   %cmp2 = icmp eq i32 %a, %b

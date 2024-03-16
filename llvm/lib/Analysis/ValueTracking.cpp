@@ -8712,28 +8712,39 @@ std::optional<bool> llvm::isImpliedCondition(const Value *LHS, const Value *RHS,
   if (Depth == MaxAnalysisRecursionDepth)
     return std::nullopt;
 
-  // LHS ==> (RHS1 || RHS2) if LHS ==> RHS1 or LHS ==> RHS2
-  // LHS ==> !(RHS1 && RHS2) if LHS ==> !RHS1 or LHS ==> !RHS2
+
   const Value *RHS1, *RHS2;
   if (match(RHS, m_LogicalOr(m_Value(RHS1), m_Value(RHS2)))) {
-    if (std::optional<bool> Imp =
-            isImpliedCondition(LHS, RHS1, DL, LHSIsTrue, Depth + 1))
-      if (*Imp == true)
-        return !InvertRHS;
-    if (std::optional<bool> Imp =
-            isImpliedCondition(LHS, RHS2, DL, LHSIsTrue, Depth + 1))
-      if (*Imp == true)
-        return !InvertRHS;
+    // LHS ==> (RHS1 || RHS2)
+    std::optional<bool> Imp1 =
+        isImpliedCondition(LHS, RHS1, DL, LHSIsTrue, Depth + 1);
+    // if LHS ==> RHS1
+    if (Imp1.value_or(false))
+      return !InvertRHS;
+    std::optional<bool> Imp2 =
+        isImpliedCondition(LHS, RHS2, DL, LHSIsTrue, Depth + 1);
+    // if LHS ==> RHS2
+    if (Imp2.value_or(false))
+      return !InvertRHS;
+    // if LHS ==> !RHS1 and !RHS2
+    if (Imp1 && Imp2 && !*Imp1 && !*Imp2)
+      return InvertRHS;
   }
   if (match(RHS, m_LogicalAnd(m_Value(RHS1), m_Value(RHS2)))) {
-    if (std::optional<bool> Imp =
-            isImpliedCondition(LHS, RHS1, DL, LHSIsTrue, Depth + 1))
-      if (*Imp == false)
-        return InvertRHS;
-    if (std::optional<bool> Imp =
-            isImpliedCondition(LHS, RHS2, DL, LHSIsTrue, Depth + 1))
-      if (*Imp == false)
-        return InvertRHS;
+    // LHS ==> RHS1 && RHS2
+    std::optional<bool> Imp1 =
+        isImpliedCondition(LHS, RHS1, DL, LHSIsTrue, Depth + 1);
+    // if LHS ==> !RHS1
+    if (!Imp1.value_or(true))
+      return InvertRHS;
+    std::optional<bool> Imp2 =
+        isImpliedCondition(LHS, RHS2, DL, LHSIsTrue, Depth + 1);
+    // if LHS ==> !RHS2
+    if (!Imp2.value_or(true))
+      return InvertRHS;
+    // if LHS ==> RHS1 and RHS2
+    if (Imp1 && Imp2 && *Imp1 && *Imp2)
+      return !InvertRHS;
   }
 
   return std::nullopt;
