@@ -567,8 +567,7 @@ define i1 @or_both_imply_false(i32 %a, i32 %b) {
 ; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP0]], i1 true, i1 [[CMP1]]
 ; CHECK-NEXT:    br i1 [[OR_COND]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], 0
-; CHECK-NEXT:    ret i1 [[CMP2]]
+; CHECK-NEXT:    ret i1 false
 ; CHECK:       F:
 ; CHECK-NEXT:    ret i1 true
 ;
@@ -592,8 +591,7 @@ define i1 @or_both_imply_true(i32 %a, i32 %b) {
 ; CHECK-NEXT:    [[OR_COND:%.*]] = select i1 [[CMP0]], i1 true, i1 [[CMP1]]
 ; CHECK-NEXT:    br i1 [[OR_COND]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[CMP2:%.*]] = icmp ne i32 [[A]], 0
-; CHECK-NEXT:    ret i1 [[CMP2]]
+; CHECK-NEXT:    ret i1 true
 ; CHECK:       F:
 ; CHECK-NEXT:    ret i1 true
 ;
@@ -669,8 +667,7 @@ define i1 @and_imples_false(i32 %a, i32 %b, i1 %cond) {
 ; CHECK:       T:
 ; CHECK-NEXT:    ret i1 true
 ; CHECK:       F:
-; CHECK-NEXT:    [[CMP2:%.*]] = icmp eq i32 [[A]], -1
-; CHECK-NEXT:    ret i1 [[CMP2]]
+; CHECK-NEXT:    ret i1 false
 ;
   %cmp0 = icmp uge i32 %a, %b
   %cmp1 = icmp sge i32 %a, -10

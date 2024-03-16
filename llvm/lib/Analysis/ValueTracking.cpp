@@ -8615,21 +8615,35 @@ isImpliedCondAndOr(const Instruction *LHS, CmpInst::Predicate RHSPred,
 
   assert(Depth <= MaxAnalysisRecursionDepth && "Hit recursion limit");
 
-  // If the result of an 'or' is false, then we know both legs of the 'or' are
-  // false.  Similarly, if the result of an 'and' is true, then we know both
-  // legs of the 'and' are true.
   const Value *ALHS, *ARHS;
-  if ((!LHSIsTrue && match(LHS, m_LogicalOr(m_Value(ALHS), m_Value(ARHS)))) ||
-      (LHSIsTrue && match(LHS, m_LogicalAnd(m_Value(ALHS), m_Value(ARHS))))) {
-    // FIXME: Make this non-recursion.
-    if (std::optional<bool> Implication = isImpliedCondition(
-            ALHS, RHSPred, RHSOp0, RHSOp1, DL, LHSIsTrue, Depth + 1))
-      return Implication;
-    if (std::optional<bool> Implication = isImpliedCondition(
-            ARHS, RHSPred, RHSOp0, RHSOp1, DL, LHSIsTrue, Depth + 1))
-      return Implication;
+  bool ShortCircuit = false;
+  // If the result of an 'or' is false, then we know both legs of the 'or' are
+  // false.
+  if (match(LHS, m_LogicalOr(m_Value(ALHS), m_Value(ARHS))))
+    ShortCircuit = !LHSIsTrue;
+  // Similarly, if the result of an 'and' is true, then we know both legs of the
+  // 'and' are true.
+  else if (match(LHS, m_LogicalAnd(m_Value(ALHS), m_Value(ARHS))))
+    ShortCircuit = LHSIsTrue;
+  else
     return std::nullopt;
-  }
+
+  std::optional<bool> ImplicationLHS, ImplicationRHS;
+  // FIXME: Make this non-recursion.
+  ImplicationLHS = isImpliedCondition(ALHS, RHSPred, RHSOp0, RHSOp1, DL,
+                                      LHSIsTrue, Depth + 1);
+  if (ShortCircuit ? ImplicationLHS.has_value() : !ImplicationLHS.has_value())
+    return ImplicationLHS;
+  ImplicationRHS = isImpliedCondition(ARHS, RHSPred, RHSOp0, RHSOp1, DL,
+                                      LHSIsTrue, Depth + 1);
+  if (ShortCircuit && ImplicationRHS)
+    return ImplicationRHS;
+
+  // if 'or'/'and' are true/false on both legs, we can use the result no matter
+  // what.
+  if (ImplicationLHS && ImplicationRHS && *ImplicationLHS == *ImplicationRHS)
+    return ImplicationLHS;
+
   return std::nullopt;
 }
 
