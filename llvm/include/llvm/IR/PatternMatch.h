@@ -387,16 +387,22 @@ struct cstval_pred_ty : public Predicate {
 };
 
 /// specialization of cstval_pred_ty for ConstantInt
-template <typename Predicate, bool AllowUndefs = true>
+template <typename Predicate, bool AllowUndefs>
 using cst_pred_ty = cstval_pred_ty<Predicate, ConstantInt, AllowUndefs>;
 
+template <typename Predicate>
+using cst_or_undef_pred_ty = cst_pred_ty<Predicate, true>;
+
 /// specialization of cstval_pred_ty for ConstantFP
-template <typename Predicate, bool AllowUndefs = true>
+template <typename Predicate, bool AllowUndefs>
 using cstfp_pred_ty = cstval_pred_ty<Predicate, ConstantFP, AllowUndefs>;
+
+template <typename Predicate>
+using cstfp_or_undef_pred_ty = cstfp_pred_ty<Predicate, true>;
 
 /// This helper class is used to match scalar and vector constants that
 /// satisfy a specified predicate, and bind them to an APInt.
-template <typename Predicate, bool AllowUndefs = true>
+template <typename Predicate, bool AllowUndefs>
 struct api_pred_ty : public Predicate {
   const APInt *&Res;
 
@@ -421,10 +427,13 @@ struct api_pred_ty : public Predicate {
   }
 };
 
+template <typename Predicate>
+using api_or_undef_pred_ty = api_pred_ty<Predicate, true>;
+
 /// This helper class is used to match scalar and vector constants that
 /// satisfy a specified predicate, and bind them to an APFloat.
 /// Undefs are allowed in splat vector constants.
-template <typename Predicate, bool AllowUndefs = true>
+template <typename Predicate, bool AllowUndefs>
 struct apf_pred_ty : public Predicate {
   const APFloat *&Res;
 
@@ -448,6 +457,9 @@ struct apf_pred_ty : public Predicate {
     return false;
   }
 };
+
+template <typename Predicate>
+using apf_or_undef_pred_ty = apf_pred_ty<Predicate, true>;
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -479,15 +491,15 @@ m_CheckedInt(const APInt *&V, function_ref<bool(const APInt &)> CheckFn) {
 
 // Match and integer or vector where CheckFn(ele) for each element is true.
 // For vectors, undefined elements are assumed to match.
-inline cst_pred_ty<custom_checkfn<APInt>>
+inline cst_or_undef_pred_ty<custom_checkfn<APInt>>
 m_CheckedIntAllowUndef(function_ref<bool(const APInt &)> CheckFn) {
-  return cst_pred_ty<custom_checkfn<APInt>>{CheckFn};
+  return cst_or_undef_pred_ty<custom_checkfn<APInt>>{CheckFn};
 }
 
-inline api_pred_ty<custom_checkfn<APInt>>
+inline api_or_undef_pred_ty<custom_checkfn<APInt>>
 m_CheckedIntAllowUndef(const APInt *&V,
                        function_ref<bool(const APInt &)> CheckFn) {
-  api_pred_ty<custom_checkfn<APInt>> P(V);
+  api_or_undef_pred_ty<custom_checkfn<APInt>> P(V);
   P.CheckFn = CheckFn;
   return P;
 }
@@ -508,15 +520,15 @@ m_CheckedFp(const APFloat *&V, function_ref<bool(const APFloat &)> CheckFn) {
 
 // Match and float or vector where CheckFn(ele) for each element is true.
 // For vectors, undefined elements are assumed to match.
-inline cstfp_pred_ty<custom_checkfn<APFloat>>
+inline cstfp_or_undef_pred_ty<custom_checkfn<APFloat>>
 m_CheckedFpAllowUndef(function_ref<bool(const APFloat &)> CheckFn) {
-  return cstfp_pred_ty<custom_checkfn<APFloat>>{CheckFn};
+  return cstfp_or_undef_pred_ty<custom_checkfn<APFloat>>{CheckFn};
 }
 
-inline apf_pred_ty<custom_checkfn<APFloat>>
+inline apf_or_undef_pred_ty<custom_checkfn<APFloat>>
 m_CheckedFpAllowUndef(const APFloat *&V,
                       function_ref<bool(const APFloat &)> CheckFn) {
-  apf_pred_ty<custom_checkfn<APFloat>> P(V);
+  apf_or_undef_pred_ty<custom_checkfn<APFloat>> P(V);
   P.CheckFn = CheckFn;
   return P;
 }
@@ -526,16 +538,16 @@ struct is_any_apint {
 };
 /// Match an integer or vector with any integral constant.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_any_apint> m_AnyIntegralConstant() {
-  return cst_pred_ty<is_any_apint>();
+inline cst_or_undef_pred_ty<is_any_apint> m_AnyIntegralConstant() {
+  return cst_or_undef_pred_ty<is_any_apint>();
 }
 
 struct is_shifted_mask {
   bool isValue(const APInt &C) { return C.isShiftedMask(); }
 };
 
-inline cst_pred_ty<is_shifted_mask> m_ShiftedMask() {
-  return cst_pred_ty<is_shifted_mask>();
+inline cst_or_undef_pred_ty<is_shifted_mask> m_ShiftedMask() {
+  return cst_or_undef_pred_ty<is_shifted_mask>();
 }
 
 struct is_all_ones {
@@ -543,8 +555,8 @@ struct is_all_ones {
 };
 /// Match an integer or vector with all bits set.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_all_ones> m_AllOnes() {
-  return cst_pred_ty<is_all_ones>();
+inline cst_or_undef_pred_ty<is_all_ones> m_AllOnes() {
+  return cst_or_undef_pred_ty<is_all_ones>();
 }
 
 struct is_maxsignedvalue {
@@ -553,10 +565,11 @@ struct is_maxsignedvalue {
 /// Match an integer or vector with values having all bits except for the high
 /// bit set (0x7f...).
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_maxsignedvalue> m_MaxSignedValue() {
-  return cst_pred_ty<is_maxsignedvalue>();
+inline cst_or_undef_pred_ty<is_maxsignedvalue> m_MaxSignedValue() {
+  return cst_or_undef_pred_ty<is_maxsignedvalue>();
 }
-inline api_pred_ty<is_maxsignedvalue> m_MaxSignedValue(const APInt *&V) {
+inline api_or_undef_pred_ty<is_maxsignedvalue>
+m_MaxSignedValue(const APInt *&V) {
   return V;
 }
 
@@ -565,30 +578,35 @@ struct is_negative {
 };
 /// Match an integer or vector of negative values.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_negative> m_Negative() {
-  return cst_pred_ty<is_negative>();
+inline cst_or_undef_pred_ty<is_negative> m_Negative() {
+  return cst_or_undef_pred_ty<is_negative>();
 }
-inline api_pred_ty<is_negative> m_Negative(const APInt *&V) { return V; }
+inline api_or_undef_pred_ty<is_negative> m_Negative(const APInt *&V) {
+  return V;
+}
 
 struct is_nonnegative {
   bool isValue(const APInt &C) { return C.isNonNegative(); }
 };
 /// Match an integer or vector of non-negative values.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_nonnegative> m_NonNegative() {
-  return cst_pred_ty<is_nonnegative>();
+inline cst_or_undef_pred_ty<is_nonnegative> m_NonNegative() {
+  return cst_or_undef_pred_ty<is_nonnegative>();
 }
-inline api_pred_ty<is_nonnegative> m_NonNegative(const APInt *&V) { return V; }
+inline api_or_undef_pred_ty<is_nonnegative> m_NonNegative(const APInt *&V) {
+  return V;
+}
 
 struct is_strictlypositive {
   bool isValue(const APInt &C) { return C.isStrictlyPositive(); }
 };
 /// Match an integer or vector of strictly positive values.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_strictlypositive> m_StrictlyPositive() {
-  return cst_pred_ty<is_strictlypositive>();
+inline cst_or_undef_pred_ty<is_strictlypositive> m_StrictlyPositive() {
+  return cst_or_undef_pred_ty<is_strictlypositive>();
 }
-inline api_pred_ty<is_strictlypositive> m_StrictlyPositive(const APInt *&V) {
+inline api_or_undef_pred_ty<is_strictlypositive>
+m_StrictlyPositive(const APInt *&V) {
   return V;
 }
 
@@ -597,32 +615,36 @@ struct is_nonpositive {
 };
 /// Match an integer or vector of non-positive values.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_nonpositive> m_NonPositive() {
-  return cst_pred_ty<is_nonpositive>();
+inline cst_or_undef_pred_ty<is_nonpositive> m_NonPositive() {
+  return cst_or_undef_pred_ty<is_nonpositive>();
 }
-inline api_pred_ty<is_nonpositive> m_NonPositive(const APInt *&V) { return V; }
+inline api_or_undef_pred_ty<is_nonpositive> m_NonPositive(const APInt *&V) {
+  return V;
+}
 
 struct is_one {
   bool isValue(const APInt &C) { return C.isOne(); }
 };
 /// Match an integer 1 or a vector with all elements equal to 1.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_one> m_One() { return cst_pred_ty<is_one>(); }
+inline cst_or_undef_pred_ty<is_one> m_One() {
+  return cst_or_undef_pred_ty<is_one>();
+}
 
 struct is_zero_int {
   bool isValue(const APInt &C) { return C.isZero(); }
 };
 /// Match an integer 0 or a vector with all elements equal to 0.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_zero_int> m_ZeroInt() {
-  return cst_pred_ty<is_zero_int>();
+inline cst_or_undef_pred_ty<is_zero_int> m_ZeroInt() {
+  return cst_or_undef_pred_ty<is_zero_int>();
 }
 
 struct is_zero {
   template <typename ITy> bool match(ITy *V) {
     auto *C = dyn_cast<Constant>(V);
     // FIXME: this should be able to do something for scalable vectors
-    return C && (C->isNullValue() || cst_pred_ty<is_zero_int>().match(C));
+    return C && (C->isNullValue() || m_ZeroInt().match(C));
   }
 };
 /// Match any null constant or a vector with all elements equal to 0.
@@ -634,18 +656,21 @@ struct is_power2 {
 };
 /// Match an integer or vector power-of-2.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_power2> m_Power2() { return cst_pred_ty<is_power2>(); }
-inline api_pred_ty<is_power2> m_Power2(const APInt *&V) { return V; }
+inline cst_or_undef_pred_ty<is_power2> m_Power2() {
+  return cst_or_undef_pred_ty<is_power2>();
+}
+inline api_or_undef_pred_ty<is_power2> m_Power2(const APInt *&V) { return V; }
 
 struct is_negated_power2 {
   bool isValue(const APInt &C) { return C.isNegatedPowerOf2(); }
 };
 /// Match a integer or vector negated power-of-2.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_negated_power2> m_NegatedPower2() {
-  return cst_pred_ty<is_negated_power2>();
+inline cst_or_undef_pred_ty<is_negated_power2> m_NegatedPower2() {
+  return cst_or_undef_pred_ty<is_negated_power2>();
 }
-inline api_pred_ty<is_negated_power2> m_NegatedPower2(const APInt *&V) {
+inline api_or_undef_pred_ty<is_negated_power2>
+m_NegatedPower2(const APInt *&V) {
   return V;
 }
 
@@ -654,10 +679,10 @@ struct is_negated_power2_or_zero {
 };
 /// Match a integer or vector negated power-of-2.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_negated_power2_or_zero> m_NegatedPower2OrZero() {
-  return cst_pred_ty<is_negated_power2_or_zero>();
+inline cst_or_undef_pred_ty<is_negated_power2_or_zero> m_NegatedPower2OrZero() {
+  return cst_or_undef_pred_ty<is_negated_power2_or_zero>();
 }
-inline api_pred_ty<is_negated_power2_or_zero>
+inline api_or_undef_pred_ty<is_negated_power2_or_zero>
 m_NegatedPower2OrZero(const APInt *&V) {
   return V;
 }
@@ -667,10 +692,10 @@ struct is_power2_or_zero {
 };
 /// Match an integer or vector of 0 or power-of-2 values.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_power2_or_zero> m_Power2OrZero() {
-  return cst_pred_ty<is_power2_or_zero>();
+inline cst_or_undef_pred_ty<is_power2_or_zero> m_Power2OrZero() {
+  return cst_or_undef_pred_ty<is_power2_or_zero>();
 }
-inline api_pred_ty<is_power2_or_zero> m_Power2OrZero(const APInt *&V) {
+inline api_or_undef_pred_ty<is_power2_or_zero> m_Power2OrZero(const APInt *&V) {
   return V;
 }
 
@@ -679,8 +704,8 @@ struct is_sign_mask {
 };
 /// Match an integer or vector with only the sign bit(s) set.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_sign_mask> m_SignMask() {
-  return cst_pred_ty<is_sign_mask>();
+inline cst_or_undef_pred_ty<is_sign_mask> m_SignMask() {
+  return cst_or_undef_pred_ty<is_sign_mask>();
 }
 
 struct is_lowbit_mask {
@@ -688,20 +713,23 @@ struct is_lowbit_mask {
 };
 /// Match an integer or vector with only the low bit(s) set.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_lowbit_mask> m_LowBitMask() {
-  return cst_pred_ty<is_lowbit_mask>();
+inline cst_or_undef_pred_ty<is_lowbit_mask> m_LowBitMask() {
+  return cst_or_undef_pred_ty<is_lowbit_mask>();
 }
-inline api_pred_ty<is_lowbit_mask> m_LowBitMask(const APInt *&V) { return V; }
+inline api_or_undef_pred_ty<is_lowbit_mask> m_LowBitMask(const APInt *&V) {
+  return V;
+}
 
 struct is_lowbit_mask_or_zero {
   bool isValue(const APInt &C) { return !C || C.isMask(); }
 };
 /// Match an integer or vector with only the low bit(s) set.
 /// For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<is_lowbit_mask_or_zero> m_LowBitMaskOrZero() {
-  return cst_pred_ty<is_lowbit_mask_or_zero>();
+inline cst_or_undef_pred_ty<is_lowbit_mask_or_zero> m_LowBitMaskOrZero() {
+  return cst_or_undef_pred_ty<is_lowbit_mask_or_zero>();
 }
-inline api_pred_ty<is_lowbit_mask_or_zero> m_LowBitMaskOrZero(const APInt *&V) {
+inline api_or_undef_pred_ty<is_lowbit_mask_or_zero>
+m_LowBitMaskOrZero(const APInt *&V) {
   return V;
 }
 
@@ -712,9 +740,9 @@ struct icmp_pred_with_threshold {
 };
 /// Match an integer or vector with every element comparing 'pred' (eg/ne/...)
 /// to Threshold. For vectors, this includes constants with undefined elements.
-inline cst_pred_ty<icmp_pred_with_threshold>
+inline cst_or_undef_pred_ty<icmp_pred_with_threshold>
 m_SpecificInt_ICMP(ICmpInst::Predicate Predicate, const APInt &Threshold) {
-  cst_pred_ty<icmp_pred_with_threshold> P;
+  cst_or_undef_pred_ty<icmp_pred_with_threshold> P;
   P.Pred = Predicate;
   P.Thr = &Threshold;
   return P;
@@ -725,15 +753,17 @@ struct is_nan {
 };
 /// Match an arbitrary NaN constant. This includes quiet and signalling nans.
 /// For vectors, this includes constants with undefined elements.
-inline cstfp_pred_ty<is_nan> m_NaN() { return cstfp_pred_ty<is_nan>(); }
+inline cstfp_or_undef_pred_ty<is_nan> m_NaN() {
+  return cstfp_or_undef_pred_ty<is_nan>();
+}
 
 struct is_nonnan {
   bool isValue(const APFloat &C) { return !C.isNaN(); }
 };
 /// Match a non-NaN FP constant.
 /// For vectors, this includes constants with undefined elements.
-inline cstfp_pred_ty<is_nonnan> m_NonNaN() {
-  return cstfp_pred_ty<is_nonnan>();
+inline cstfp_or_undef_pred_ty<is_nonnan> m_NonNaN() {
+  return cstfp_or_undef_pred_ty<is_nonnan>();
 }
 
 struct is_inf {
@@ -741,15 +771,17 @@ struct is_inf {
 };
 /// Match a positive or negative infinity FP constant.
 /// For vectors, this includes constants with undefined elements.
-inline cstfp_pred_ty<is_inf> m_Inf() { return cstfp_pred_ty<is_inf>(); }
+inline cstfp_or_undef_pred_ty<is_inf> m_Inf() {
+  return cstfp_or_undef_pred_ty<is_inf>();
+}
 
 struct is_noninf {
   bool isValue(const APFloat &C) { return !C.isInfinity(); }
 };
 /// Match a non-infinity FP constant, i.e. finite or NaN.
 /// For vectors, this includes constants with undefined elements.
-inline cstfp_pred_ty<is_noninf> m_NonInf() {
-  return cstfp_pred_ty<is_noninf>();
+inline cstfp_or_undef_pred_ty<is_noninf> m_NonInf() {
+  return cstfp_or_undef_pred_ty<is_noninf>();
 }
 
 struct is_finite {
@@ -757,20 +789,21 @@ struct is_finite {
 };
 /// Match a finite FP constant, i.e. not infinity or NaN.
 /// For vectors, this includes constants with undefined elements.
-inline cstfp_pred_ty<is_finite> m_Finite() {
-  return cstfp_pred_ty<is_finite>();
+inline cstfp_or_undef_pred_ty<is_finite> m_Finite() {
+  return cstfp_or_undef_pred_ty<is_finite>();
 }
-inline apf_pred_ty<is_finite> m_Finite(const APFloat *&V) { return V; }
+inline apf_or_undef_pred_ty<is_finite> m_Finite(const APFloat *&V) { return V; }
 
 struct is_finitenonzero {
   bool isValue(const APFloat &C) { return C.isFiniteNonZero(); }
 };
 /// Match a finite non-zero FP constant.
 /// For vectors, this includes constants with undefined elements.
-inline cstfp_pred_ty<is_finitenonzero> m_FiniteNonZero() {
-  return cstfp_pred_ty<is_finitenonzero>();
+inline cstfp_or_undef_pred_ty<is_finitenonzero> m_FiniteNonZero() {
+  return cstfp_or_undef_pred_ty<is_finitenonzero>();
 }
-inline apf_pred_ty<is_finitenonzero> m_FiniteNonZero(const APFloat *&V) {
+inline apf_or_undef_pred_ty<is_finitenonzero>
+m_FiniteNonZero(const APFloat *&V) {
   return V;
 }
 
@@ -779,8 +812,8 @@ struct is_any_zero_fp {
 };
 /// Match a floating-point negative zero or positive zero.
 /// For vectors, this includes constants with undefined elements.
-inline cstfp_pred_ty<is_any_zero_fp> m_AnyZeroFP() {
-  return cstfp_pred_ty<is_any_zero_fp>();
+inline cstfp_or_undef_pred_ty<is_any_zero_fp> m_AnyZeroFP() {
+  return cstfp_or_undef_pred_ty<is_any_zero_fp>();
 }
 
 struct is_pos_zero_fp {
@@ -788,8 +821,8 @@ struct is_pos_zero_fp {
 };
 /// Match a floating-point positive zero.
 /// For vectors, this includes constants with undefined elements.
-inline cstfp_pred_ty<is_pos_zero_fp> m_PosZeroFP() {
-  return cstfp_pred_ty<is_pos_zero_fp>();
+inline cstfp_or_undef_pred_ty<is_pos_zero_fp> m_PosZeroFP() {
+  return cstfp_or_undef_pred_ty<is_pos_zero_fp>();
 }
 
 struct is_neg_zero_fp {
@@ -797,8 +830,8 @@ struct is_neg_zero_fp {
 };
 /// Match a floating-point negative zero.
 /// For vectors, this includes constants with undefined elements.
-inline cstfp_pred_ty<is_neg_zero_fp> m_NegZeroFP() {
-  return cstfp_pred_ty<is_neg_zero_fp>();
+inline cstfp_or_undef_pred_ty<is_neg_zero_fp> m_NegZeroFP() {
+  return cstfp_or_undef_pred_ty<is_neg_zero_fp>();
 }
 
 struct is_non_zero_fp {
@@ -806,8 +839,8 @@ struct is_non_zero_fp {
 };
 /// Match a floating-point non-zero.
 /// For vectors, this includes constants with undefined elements.
-inline cstfp_pred_ty<is_non_zero_fp> m_NonZeroFP() {
-  return cstfp_pred_ty<is_non_zero_fp>();
+inline cstfp_or_undef_pred_ty<is_non_zero_fp> m_NonZeroFP() {
+  return cstfp_or_undef_pred_ty<is_non_zero_fp>();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -871,8 +904,7 @@ m_ImmConstant() {
 }
 
 /// Match an immediate Constant, capturing the value if we match.
-inline match_combine_and<bind_ty<Constant>,
-                         match_unless<constantexpr_match>>
+inline match_combine_and<bind_ty<Constant>, match_unless<constantexpr_match>>
 m_ImmConstant(Constant *&C) {
   return m_CombineAnd(m_Constant(C), m_Unless(m_ConstantExpr()));
 }
@@ -1127,11 +1159,11 @@ template <typename Op_t> struct FNeg_match {
     if (FPMO->getOpcode() == Instruction::FSub) {
       if (FPMO->hasNoSignedZeros()) {
         // With 'nsz', any zero goes.
-        if (!cstfp_pred_ty<is_any_zero_fp>().match(FPMO->getOperand(0)))
+        if (!m_AnyZeroFP().match(FPMO->getOperand(0)))
           return false;
       } else {
         // Without 'nsz', we need fsub -0.0, X exactly.
-        if (!cstfp_pred_ty<is_neg_zero_fp>().match(FPMO->getOperand(0)))
+        if (!m_NegZeroFP().match(FPMO->getOperand(0)))
           return false;
       }
 
@@ -1149,7 +1181,8 @@ template <typename OpTy> inline FNeg_match<OpTy> m_FNeg(const OpTy &X) {
 
 /// Match 'fneg X' as 'fsub +-0.0, X'.
 template <typename RHS>
-inline BinaryOp_match<cstfp_pred_ty<is_any_zero_fp>, RHS, Instruction::FSub>
+inline BinaryOp_match<cstfp_or_undef_pred_ty<is_any_zero_fp>, RHS,
+                      Instruction::FSub>
 m_FNegNSZ(const RHS &X) {
   return m_FSub(m_AnyZeroFP(), X);
 }
@@ -2596,14 +2629,15 @@ inline BinaryOp_match<LHS, RHS, Instruction::Xor, true> m_c_Xor(const LHS &L,
 
 /// Matches a 'Neg' as 'sub 0, V'.
 template <typename ValTy>
-inline BinaryOp_match<cst_pred_ty<is_zero_int>, ValTy, Instruction::Sub>
+inline BinaryOp_match<cst_or_undef_pred_ty<is_zero_int>, ValTy,
+                      Instruction::Sub>
 m_Neg(const ValTy &V) {
   return m_Sub(m_ZeroInt(), V);
 }
 
 /// Matches a 'Neg' as 'sub nsw 0, V'.
 template <typename ValTy>
-inline OverflowingBinaryOp_match<cst_pred_ty<is_zero_int>, ValTy,
+inline OverflowingBinaryOp_match<cst_or_undef_pred_ty<is_zero_int>, ValTy,
                                  Instruction::Sub,
                                  OverflowingBinaryOperator::NoSignedWrap>
 m_NSWNeg(const ValTy &V) {
@@ -2614,7 +2648,8 @@ m_NSWNeg(const ValTy &V) {
 /// NOTE: we first match the 'Not' (by matching '-1'),
 /// and only then match the inner matcher!
 template <typename ValTy>
-inline BinaryOp_match<cst_pred_ty<is_all_ones>, ValTy, Instruction::Xor, true>
+inline BinaryOp_match<cst_or_undef_pred_ty<is_all_ones>, ValTy,
+                      Instruction::Xor, true>
 m_Not(const ValTy &V) {
   return m_c_Xor(m_AllOnes(), V);
 }

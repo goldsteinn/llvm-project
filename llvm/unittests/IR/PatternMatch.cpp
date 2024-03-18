@@ -1796,20 +1796,26 @@ TEST_F(PatternMatchTest, ConstantPredicateType) {
   Constant *CU32Zero = Constant::getIntegerValue(U32Ty, U32Zero);
   Constant *CU32DeadBeef = Constant::getIntegerValue(U32Ty, U32DeadBeef);
 
-  EXPECT_TRUE(match(CU32Max, cst_pred_ty<is_unsigned_max_pred>()));
-  EXPECT_FALSE(match(CU32Max, cst_pred_ty<is_unsigned_zero_pred>()));
-  EXPECT_TRUE(match(CU32Max, cst_pred_ty<always_true_pred<APInt>>()));
-  EXPECT_FALSE(match(CU32Max, cst_pred_ty<always_false_pred<APInt>>()));
+  EXPECT_TRUE(match(CU32Max, cst_or_undef_pred_ty<is_unsigned_max_pred>()));
+  EXPECT_FALSE(match(CU32Max, cst_or_undef_pred_ty<is_unsigned_zero_pred>()));
+  EXPECT_TRUE(match(CU32Max, cst_or_undef_pred_ty<always_true_pred<APInt>>()));
+  EXPECT_FALSE(
+      match(CU32Max, cst_or_undef_pred_ty<always_false_pred<APInt>>()));
 
-  EXPECT_FALSE(match(CU32Zero, cst_pred_ty<is_unsigned_max_pred>()));
-  EXPECT_TRUE(match(CU32Zero, cst_pred_ty<is_unsigned_zero_pred>()));
-  EXPECT_TRUE(match(CU32Zero, cst_pred_ty<always_true_pred<APInt>>()));
-  EXPECT_FALSE(match(CU32Zero, cst_pred_ty<always_false_pred<APInt>>()));
+  EXPECT_FALSE(match(CU32Zero, cst_or_undef_pred_ty<is_unsigned_max_pred>()));
+  EXPECT_TRUE(match(CU32Zero, cst_or_undef_pred_ty<is_unsigned_zero_pred>()));
+  EXPECT_TRUE(match(CU32Zero, cst_or_undef_pred_ty<always_true_pred<APInt>>()));
+  EXPECT_FALSE(
+      match(CU32Zero, cst_or_undef_pred_ty<always_false_pred<APInt>>()));
 
-  EXPECT_FALSE(match(CU32DeadBeef, cst_pred_ty<is_unsigned_max_pred>()));
-  EXPECT_FALSE(match(CU32DeadBeef, cst_pred_ty<is_unsigned_zero_pred>()));
-  EXPECT_TRUE(match(CU32DeadBeef, cst_pred_ty<always_true_pred<APInt>>()));
-  EXPECT_FALSE(match(CU32DeadBeef, cst_pred_ty<always_false_pred<APInt>>()));
+  EXPECT_FALSE(
+      match(CU32DeadBeef, cst_or_undef_pred_ty<is_unsigned_max_pred>()));
+  EXPECT_FALSE(
+      match(CU32DeadBeef, cst_or_undef_pred_ty<is_unsigned_zero_pred>()));
+  EXPECT_TRUE(
+      match(CU32DeadBeef, cst_or_undef_pred_ty<always_true_pred<APInt>>()));
+  EXPECT_FALSE(
+      match(CU32DeadBeef, cst_or_undef_pred_ty<always_false_pred<APInt>>()));
 
   // Scalar float
   APFloat F32NaN = APFloat::getNaN(APFloat::IEEEsingle());
@@ -1822,20 +1828,26 @@ TEST_F(PatternMatchTest, ConstantPredicateType) {
   Constant *CF32Zero = ConstantFP::get(F32Ty, F32Zero);
   Constant *CF32Pi = ConstantFP::get(F32Ty, F32Pi);
 
-  EXPECT_TRUE(match(CF32NaN, cstfp_pred_ty<is_float_nan_pred>()));
-  EXPECT_FALSE(match(CF32NaN, cstfp_pred_ty<is_float_zero_pred>()));
-  EXPECT_TRUE(match(CF32NaN, cstfp_pred_ty<always_true_pred<APFloat>>()));
-  EXPECT_FALSE(match(CF32NaN, cstfp_pred_ty<always_false_pred<APFloat>>()));
+  EXPECT_TRUE(match(CF32NaN, cstfp_or_undef_pred_ty<is_float_nan_pred>()));
+  EXPECT_FALSE(match(CF32NaN, cstfp_or_undef_pred_ty<is_float_zero_pred>()));
+  EXPECT_TRUE(
+      match(CF32NaN, cstfp_or_undef_pred_ty<always_true_pred<APFloat>>()));
+  EXPECT_FALSE(
+      match(CF32NaN, cstfp_or_undef_pred_ty<always_false_pred<APFloat>>()));
 
-  EXPECT_FALSE(match(CF32Zero, cstfp_pred_ty<is_float_nan_pred>()));
-  EXPECT_TRUE(match(CF32Zero, cstfp_pred_ty<is_float_zero_pred>()));
-  EXPECT_TRUE(match(CF32Zero, cstfp_pred_ty<always_true_pred<APFloat>>()));
-  EXPECT_FALSE(match(CF32Zero, cstfp_pred_ty<always_false_pred<APFloat>>()));
+  EXPECT_FALSE(match(CF32Zero, cstfp_or_undef_pred_ty<is_float_nan_pred>()));
+  EXPECT_TRUE(match(CF32Zero, cstfp_or_undef_pred_ty<is_float_zero_pred>()));
+  EXPECT_TRUE(
+      match(CF32Zero, cstfp_or_undef_pred_ty<always_true_pred<APFloat>>()));
+  EXPECT_FALSE(
+      match(CF32Zero, cstfp_or_undef_pred_ty<always_false_pred<APFloat>>()));
 
-  EXPECT_FALSE(match(CF32Pi, cstfp_pred_ty<is_float_nan_pred>()));
-  EXPECT_FALSE(match(CF32Pi, cstfp_pred_ty<is_float_zero_pred>()));
-  EXPECT_TRUE(match(CF32Pi, cstfp_pred_ty<always_true_pred<APFloat>>()));
-  EXPECT_FALSE(match(CF32Pi, cstfp_pred_ty<always_false_pred<APFloat>>()));
+  EXPECT_FALSE(match(CF32Pi, cstfp_or_undef_pred_ty<is_float_nan_pred>()));
+  EXPECT_FALSE(match(CF32Pi, cstfp_or_undef_pred_ty<is_float_zero_pred>()));
+  EXPECT_TRUE(
+      match(CF32Pi, cstfp_or_undef_pred_ty<always_true_pred<APFloat>>()));
+  EXPECT_FALSE(
+      match(CF32Pi, cstfp_or_undef_pred_ty<always_false_pred<APFloat>>()));
 
   auto FixedEC = ElementCount::getFixed(4);
   auto ScalableEC = ElementCount::getScalable(4);
@@ -1849,23 +1861,32 @@ TEST_F(PatternMatchTest, ConstantPredicateType) {
     Constant *CSplatU32Zero = ConstantVector::getSplat(EC, CU32Zero);
     Constant *CSplatU32DeadBeef = ConstantVector::getSplat(EC, CU32DeadBeef);
 
-    EXPECT_TRUE(match(CSplatU32Max, cst_pred_ty<is_unsigned_max_pred>()));
-    EXPECT_FALSE(match(CSplatU32Max, cst_pred_ty<is_unsigned_zero_pred>()));
-    EXPECT_TRUE(match(CSplatU32Max, cst_pred_ty<always_true_pred<APInt>>()));
-    EXPECT_FALSE(match(CSplatU32Max, cst_pred_ty<always_false_pred<APInt>>()));
-
-    EXPECT_FALSE(match(CSplatU32Zero, cst_pred_ty<is_unsigned_max_pred>()));
-    EXPECT_TRUE(match(CSplatU32Zero, cst_pred_ty<is_unsigned_zero_pred>()));
-    EXPECT_TRUE(match(CSplatU32Zero, cst_pred_ty<always_true_pred<APInt>>()));
-    EXPECT_FALSE(match(CSplatU32Zero, cst_pred_ty<always_false_pred<APInt>>()));
-
-    EXPECT_FALSE(match(CSplatU32DeadBeef, cst_pred_ty<is_unsigned_max_pred>()));
-    EXPECT_FALSE(
-        match(CSplatU32DeadBeef, cst_pred_ty<is_unsigned_zero_pred>()));
     EXPECT_TRUE(
-        match(CSplatU32DeadBeef, cst_pred_ty<always_true_pred<APInt>>()));
+        match(CSplatU32Max, cst_or_undef_pred_ty<is_unsigned_max_pred>()));
     EXPECT_FALSE(
-        match(CSplatU32DeadBeef, cst_pred_ty<always_false_pred<APInt>>()));
+        match(CSplatU32Max, cst_or_undef_pred_ty<is_unsigned_zero_pred>()));
+    EXPECT_TRUE(
+        match(CSplatU32Max, cst_or_undef_pred_ty<always_true_pred<APInt>>()));
+    EXPECT_FALSE(
+        match(CSplatU32Max, cst_or_undef_pred_ty<always_false_pred<APInt>>()));
+
+    EXPECT_FALSE(
+        match(CSplatU32Zero, cst_or_undef_pred_ty<is_unsigned_max_pred>()));
+    EXPECT_TRUE(
+        match(CSplatU32Zero, cst_or_undef_pred_ty<is_unsigned_zero_pred>()));
+    EXPECT_TRUE(
+        match(CSplatU32Zero, cst_or_undef_pred_ty<always_true_pred<APInt>>()));
+    EXPECT_FALSE(
+        match(CSplatU32Zero, cst_or_undef_pred_ty<always_false_pred<APInt>>()));
+
+    EXPECT_FALSE(
+        match(CSplatU32DeadBeef, cst_or_undef_pred_ty<is_unsigned_max_pred>()));
+    EXPECT_FALSE(match(CSplatU32DeadBeef,
+                       cst_or_undef_pred_ty<is_unsigned_zero_pred>()));
+    EXPECT_TRUE(match(CSplatU32DeadBeef,
+                      cst_or_undef_pred_ty<always_true_pred<APInt>>()));
+    EXPECT_FALSE(match(CSplatU32DeadBeef,
+                       cst_or_undef_pred_ty<always_false_pred<APInt>>()));
 
     // float
 
@@ -1873,25 +1894,32 @@ TEST_F(PatternMatchTest, ConstantPredicateType) {
     Constant *CSplatF32Zero = ConstantVector::getSplat(EC, CF32Zero);
     Constant *CSplatF32Pi = ConstantVector::getSplat(EC, CF32Pi);
 
-    EXPECT_TRUE(match(CSplatF32NaN, cstfp_pred_ty<is_float_nan_pred>()));
-    EXPECT_FALSE(match(CSplatF32NaN, cstfp_pred_ty<is_float_zero_pred>()));
     EXPECT_TRUE(
-        match(CSplatF32NaN, cstfp_pred_ty<always_true_pred<APFloat>>()));
+        match(CSplatF32NaN, cstfp_or_undef_pred_ty<is_float_nan_pred>()));
     EXPECT_FALSE(
-        match(CSplatF32NaN, cstfp_pred_ty<always_false_pred<APFloat>>()));
+        match(CSplatF32NaN, cstfp_or_undef_pred_ty<is_float_zero_pred>()));
+    EXPECT_TRUE(match(CSplatF32NaN,
+                      cstfp_or_undef_pred_ty<always_true_pred<APFloat>>()));
+    EXPECT_FALSE(match(CSplatF32NaN,
+                       cstfp_or_undef_pred_ty<always_false_pred<APFloat>>()));
 
-    EXPECT_FALSE(match(CSplatF32Zero, cstfp_pred_ty<is_float_nan_pred>()));
-    EXPECT_TRUE(match(CSplatF32Zero, cstfp_pred_ty<is_float_zero_pred>()));
+    EXPECT_FALSE(
+        match(CSplatF32Zero, cstfp_or_undef_pred_ty<is_float_nan_pred>()));
     EXPECT_TRUE(
-        match(CSplatF32Zero, cstfp_pred_ty<always_true_pred<APFloat>>()));
-    EXPECT_FALSE(
-        match(CSplatF32Zero, cstfp_pred_ty<always_false_pred<APFloat>>()));
+        match(CSplatF32Zero, cstfp_or_undef_pred_ty<is_float_zero_pred>()));
+    EXPECT_TRUE(match(CSplatF32Zero,
+                      cstfp_or_undef_pred_ty<always_true_pred<APFloat>>()));
+    EXPECT_FALSE(match(CSplatF32Zero,
+                       cstfp_or_undef_pred_ty<always_false_pred<APFloat>>()));
 
-    EXPECT_FALSE(match(CSplatF32Pi, cstfp_pred_ty<is_float_nan_pred>()));
-    EXPECT_FALSE(match(CSplatF32Pi, cstfp_pred_ty<is_float_zero_pred>()));
-    EXPECT_TRUE(match(CSplatF32Pi, cstfp_pred_ty<always_true_pred<APFloat>>()));
     EXPECT_FALSE(
-        match(CSplatF32Pi, cstfp_pred_ty<always_false_pred<APFloat>>()));
+        match(CSplatF32Pi, cstfp_or_undef_pred_ty<is_float_nan_pred>()));
+    EXPECT_FALSE(
+        match(CSplatF32Pi, cstfp_or_undef_pred_ty<is_float_zero_pred>()));
+    EXPECT_TRUE(match(CSplatF32Pi,
+                      cstfp_or_undef_pred_ty<always_true_pred<APFloat>>()));
+    EXPECT_FALSE(match(CSplatF32Pi,
+                       cstfp_or_undef_pred_ty<always_false_pred<APFloat>>()));
   }
 
   // Int arbitrary vector
@@ -1901,16 +1929,21 @@ TEST_F(PatternMatchTest, ConstantPredicateType) {
   Constant *CU32MaxWithUndef =
       ConstantVector::get({CU32Undef, CU32Max, CU32Undef});
 
-  EXPECT_FALSE(match(CMixedU32, cst_pred_ty<is_unsigned_max_pred>()));
-  EXPECT_FALSE(match(CMixedU32, cst_pred_ty<is_unsigned_zero_pred>()));
-  EXPECT_TRUE(match(CMixedU32, cst_pred_ty<always_true_pred<APInt>>()));
-  EXPECT_FALSE(match(CMixedU32, cst_pred_ty<always_false_pred<APInt>>()));
-
-  EXPECT_TRUE(match(CU32MaxWithUndef, cst_pred_ty<is_unsigned_max_pred>()));
-  EXPECT_FALSE(match(CU32MaxWithUndef, cst_pred_ty<is_unsigned_zero_pred>()));
-  EXPECT_TRUE(match(CU32MaxWithUndef, cst_pred_ty<always_true_pred<APInt>>()));
+  EXPECT_FALSE(match(CMixedU32, cst_or_undef_pred_ty<is_unsigned_max_pred>()));
+  EXPECT_FALSE(match(CMixedU32, cst_or_undef_pred_ty<is_unsigned_zero_pred>()));
+  EXPECT_TRUE(
+      match(CMixedU32, cst_or_undef_pred_ty<always_true_pred<APInt>>()));
   EXPECT_FALSE(
-      match(CU32MaxWithUndef, cst_pred_ty<always_false_pred<APInt>>()));
+      match(CMixedU32, cst_or_undef_pred_ty<always_false_pred<APInt>>()));
+
+  EXPECT_TRUE(
+      match(CU32MaxWithUndef, cst_or_undef_pred_ty<is_unsigned_max_pred>()));
+  EXPECT_FALSE(
+      match(CU32MaxWithUndef, cst_or_undef_pred_ty<is_unsigned_zero_pred>()));
+  EXPECT_TRUE(
+      match(CU32MaxWithUndef, cst_or_undef_pred_ty<always_true_pred<APInt>>()));
+  EXPECT_FALSE(match(CU32MaxWithUndef,
+                     cst_or_undef_pred_ty<always_false_pred<APInt>>()));
 
   // Float arbitrary vector
 
@@ -1919,17 +1952,21 @@ TEST_F(PatternMatchTest, ConstantPredicateType) {
   Constant *CF32NaNWithUndef =
       ConstantVector::get({CF32Undef, CF32NaN, CF32Undef});
 
-  EXPECT_FALSE(match(CMixedF32, cstfp_pred_ty<is_float_nan_pred>()));
-  EXPECT_FALSE(match(CMixedF32, cstfp_pred_ty<is_float_zero_pred>()));
-  EXPECT_TRUE(match(CMixedF32, cstfp_pred_ty<always_true_pred<APFloat>>()));
-  EXPECT_FALSE(match(CMixedF32, cstfp_pred_ty<always_false_pred<APFloat>>()));
-
-  EXPECT_TRUE(match(CF32NaNWithUndef, cstfp_pred_ty<is_float_nan_pred>()));
-  EXPECT_FALSE(match(CF32NaNWithUndef, cstfp_pred_ty<is_float_zero_pred>()));
+  EXPECT_FALSE(match(CMixedF32, cstfp_or_undef_pred_ty<is_float_nan_pred>()));
+  EXPECT_FALSE(match(CMixedF32, cstfp_or_undef_pred_ty<is_float_zero_pred>()));
   EXPECT_TRUE(
-      match(CF32NaNWithUndef, cstfp_pred_ty<always_true_pred<APFloat>>()));
+      match(CMixedF32, cstfp_or_undef_pred_ty<always_true_pred<APFloat>>()));
   EXPECT_FALSE(
-      match(CF32NaNWithUndef, cstfp_pred_ty<always_false_pred<APFloat>>()));
+      match(CMixedF32, cstfp_or_undef_pred_ty<always_false_pred<APFloat>>()));
+
+  EXPECT_TRUE(
+      match(CF32NaNWithUndef, cstfp_or_undef_pred_ty<is_float_nan_pred>()));
+  EXPECT_FALSE(
+      match(CF32NaNWithUndef, cstfp_or_undef_pred_ty<is_float_zero_pred>()));
+  EXPECT_TRUE(match(CF32NaNWithUndef,
+                    cstfp_or_undef_pred_ty<always_true_pred<APFloat>>()));
+  EXPECT_FALSE(match(CF32NaNWithUndef,
+                     cstfp_or_undef_pred_ty<always_false_pred<APFloat>>()));
 }
 
 TEST_F(PatternMatchTest, InsertValue) {
