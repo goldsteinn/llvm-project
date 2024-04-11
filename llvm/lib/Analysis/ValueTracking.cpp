@@ -8730,8 +8730,9 @@ static std::optional<bool> isImpliedCondICmps(const ICmpInst *LHS,
   }
 
   // See if we can infer anything if operand-0 matches
+  const APInt *Unused;
   if (L0 == R0 && L0->getType()->isIntOrIntVectorTy() &&
-      (match(L1, m_ImmConstant()) || match(R1, m_ImmConstant()))) {
+      (match(L1, m_APInt(Unused)) || match(R1, m_APInt(Unused)))) {
     // Potential TODO: We could also further use the constant range of L0/R0 to
     // further constraint the constant ranges. At the moment this leads to
     // several regressions related to not transforming `multi_use(A + C0) eq/ne
@@ -8748,7 +8749,6 @@ static std::optional<bool> isImpliedCondICmps(const ICmpInst *LHS,
       return R;
     // If both L1/R1 where exact constant ranges and we didn't get anything
     // here, we won't be able to deduce this.
-    const APInt *Unused;
     if (match(L1, m_APInt(Unused)) && match(R1, m_APInt(Unused)))
       return std::nullopt;
   }
