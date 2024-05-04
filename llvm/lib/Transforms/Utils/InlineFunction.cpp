@@ -1369,7 +1369,7 @@ static void AddParamAndFnBasicAttributes(const CallBase &CB,
   // behavior was just using a poison value.
   static const Attribute::AttrKind ExactAttrsToPropagate[] = {
       Attribute::Dereferenceable, Attribute::DereferenceableOrNull,
-      Attribute::NonNull, Attribute::Alignment};
+      Attribute::NonNull, Attribute::Alignment, Attribute::Range};
 
   for (unsigned I = 0, E = CB.arg_size(); I < E; ++I) {
     ValidObjParamAttrs.emplace_back(AttrBuilder{CB.getContext()});
@@ -1441,8 +1441,18 @@ static void AddParamAndFnBasicAttributes(const CallBase &CB,
               NewAL.getAlignment().valueOrOne())
             NewAL.removeAttribute(Attribute::Alignment);
 
+          auto ExistingRange = AL.getParamRange(I);
           AL = AL.addParamAttributes(Context, I, NewAL);
 
+          // For range we use the intersection.
+          if (ExistingRange.has_value()) {
+            if (auto NewRange = NewAL.getRange()) {
+              ConstantRange CombinedRange =
+                  ExistingRange->intersectWith(*NewRange);
+              AL = AL.removeParamAttribute(Context, I, Attribute::Range);
+              AL = AL.addRangeParamAttr(Context, I, CombinedRange);
+            }
+          }
         } else {
           // Check if the underlying value for the parameter is an argument.
           const Value *UnderlyingV =
