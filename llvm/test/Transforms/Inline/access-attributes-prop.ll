@@ -305,7 +305,7 @@ define void @prop_param_callbase_def_1x_partial_3(ptr %p, ptr %p2) {
 define void @prop_deref(ptr %p) {
 ; CHECK-LABEL: define {{[^@]+}}@prop_deref
 ; CHECK-SAME: (ptr [[P:%.*]]) {
-; CHECK-NEXT:    call void @bar1(ptr [[P]])
+; CHECK-NEXT:    call void @bar1(ptr dereferenceable(16) [[P]])
 ; CHECK-NEXT:    ret void
 ;
   call void @foo1(ptr dereferenceable(16) %p)
@@ -315,7 +315,7 @@ define void @prop_deref(ptr %p) {
 define void @prop_deref_or_null(ptr %p) {
 ; CHECK-LABEL: define {{[^@]+}}@prop_deref_or_null
 ; CHECK-SAME: (ptr [[P:%.*]]) {
-; CHECK-NEXT:    call void @bar1(ptr [[P]])
+; CHECK-NEXT:    call void @bar1(ptr dereferenceable_or_null(256) [[P]])
 ; CHECK-NEXT:    ret void
 ;
   call void @foo1(ptr dereferenceable_or_null(256) %p)
@@ -325,7 +325,7 @@ define void @prop_deref_or_null(ptr %p) {
 define void @prop_param_nonnull_and_align(ptr %p) {
 ; CHECK-LABEL: define {{[^@]+}}@prop_param_nonnull_and_align
 ; CHECK-SAME: (ptr [[P:%.*]]) {
-; CHECK-NEXT:    call void @bar1(ptr [[P]])
+; CHECK-NEXT:    call void @bar1(ptr nonnull align 32 [[P]])
 ; CHECK-NEXT:    ret void
 ;
   call void @foo1(ptr nonnull align 32 %p)
@@ -335,7 +335,7 @@ define void @prop_param_nonnull_and_align(ptr %p) {
 define void @prop_param_nofree_and_align(ptr %p) {
 ; CHECK-LABEL: define {{[^@]+}}@prop_param_nofree_and_align
 ; CHECK-SAME: (ptr [[P:%.*]]) {
-; CHECK-NEXT:    call void @bar1(ptr [[P]])
+; CHECK-NEXT:    call void @bar1(ptr align 32 [[P]])
 ; CHECK-NEXT:    ret void
 ;
   call void @foo1(ptr nofree align 32 %p)
@@ -355,7 +355,7 @@ define void @prop_param_deref_align_no_update(ptr %p) {
 define void @prop_param_deref_align_update(ptr %p) {
 ; CHECK-LABEL: define {{[^@]+}}@prop_param_deref_align_update
 ; CHECK-SAME: (ptr [[P:%.*]]) {
-; CHECK-NEXT:    call void @bar1(ptr align 64 dereferenceable(512) [[P]])
+; CHECK-NEXT:    call void @bar1(ptr align 128 dereferenceable(1024) [[P]])
 ; CHECK-NEXT:    ret void
 ;
   call void @foo1_bar_aligned64_deref512(ptr align 128 dereferenceable(1024) %p)
@@ -365,7 +365,7 @@ define void @prop_param_deref_align_update(ptr %p) {
 define void @prop_param_deref_or_null_update(ptr %p) {
 ; CHECK-LABEL: define {{[^@]+}}@prop_param_deref_or_null_update
 ; CHECK-SAME: (ptr [[P:%.*]]) {
-; CHECK-NEXT:    call void @bar1(ptr align 512 dereferenceable_or_null(512) [[P]])
+; CHECK-NEXT:    call void @bar1(ptr align 512 dereferenceable_or_null(1024) [[P]])
 ; CHECK-NEXT:    ret void
 ;
   call void @foo1_bar_aligned512_deref_or_null512(ptr dereferenceable_or_null(1024) %p)
@@ -375,7 +375,7 @@ define void @prop_param_deref_or_null_update(ptr %p) {
 define void @prop_param_deref_or_null_no_update(ptr %p) {
 ; CHECK-LABEL: define {{[^@]+}}@prop_param_deref_or_null_no_update
 ; CHECK-SAME: (ptr [[P:%.*]]) {
-; CHECK-NEXT:    call void @bar1(ptr align 512 dereferenceable_or_null(512) [[P]])
+; CHECK-NEXT:    call void @bar1(ptr align 512 dereferenceable_or_null(32) [[P]])
 ; CHECK-NEXT:    ret void
 ;
   call void @foo1_bar_aligned512_deref_or_null512(ptr dereferenceable_or_null(32) %p)
