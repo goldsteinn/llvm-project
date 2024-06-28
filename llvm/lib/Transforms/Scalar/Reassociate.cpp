@@ -539,6 +539,8 @@ static bool LinearizeExprTree(Instruction *I,
     Ops.push_back(std::make_pair(V, Weight));
     if (Opcode == Instruction::Add && Flags.AllKnownNonNegative && Flags.HasNSW)
       Flags.AllKnownNonNegative &= isKnownNonNegative(V, SimplifyQuery(DL));
+    if (Opcode == Instruction::Mul && Flags.AllKnownNonZero && Flags.HasNUW)
+      Flags.AllKnownNonZero &= isKnownNonZero(V, SimplifyQuery(DL));
   }
 
   // For nilpotent operations or addition there may be no operands, for example
@@ -730,6 +732,10 @@ void ReassociatePass::RewriteExprTree(BinaryOperator *I,
               ExpressionChangedStart->setHasNoUnsignedWrap();
             if (Flags.HasNSW && (Flags.AllKnownNonNegative || Flags.HasNUW))
               ExpressionChangedStart->setHasNoSignedWrap();
+          }
+          if (ExpressionChangedStart->getOpcode() == Instruction::Mul) {
+            if (Flags.HasNUW && Flags.AllKnownNonZero)
+              ExpressionChangedStart->setHasNoUnsignedWrap();
           }
         }
       }
@@ -967,7 +973,7 @@ static BinaryOperator *convertOrWithNoCommonBitsToAdd(Instruction *Or) {
 /// Return true if we should break up this subtract of X-Y into (X + -Y).
 static bool ShouldBreakUpSubtract(Instruction *Sub) {
   // If this is a negation, we can't split it up!
-  if (match(Sub, m_Neg(m_Value())) || match(Sub, m_FNeg(m_Value()))) 
+  if (match(Sub, m_Neg(m_Value())) || match(Sub, m_FNeg(m_Value())))
     return false;
 
   // Don't breakup X - undef.
@@ -2309,22 +2315,58 @@ void ReassociatePass::ReassociateExpression(BinaryOperator *I) {
     return;
   }
 
-  // We want to sink immediates as deeply as possible except in the case where
-  // this is a multiply tree used only by an add, and the immediate is a -1.
-  // In this case we reassociate to put the negation on the outside so that we
-  // can fold the negation into the add: (-X)*Y + Z -> Z-X*Y
+  // We want to sink immediates as deeply as possible except a few special
+  // cases:
+  // 1) In the case where this is a multiply tree used only by an add, and
+  //    the immediate is a -1. In this case we reassociate to put the
+  //    negation on the outside so that we can fold the negation into the
+  //    add: (-X)*Y + Z -> Z-X*Y
+  // 2) In the case that the muliply tree is used only be a div, the div
+  //    denominator matches on of the mulitply operands. In this case move
+  //    the mul with the matching operand to the outside so it can fold with
+  //    the div.
   if (I->hasOneUse()) {
-    if (I->getOpcode() == Instruction::Mul &&
-        cast<Instruction>(I->user_back())->getOpcode() == Instruction::Add &&
-        isa<ConstantInt>(Ops.back().Op) &&
-        cast<ConstantInt>(Ops.back().Op)->isMinusOne()) {
-      ValueEntry Tmp = Ops.pop_back_val();
-      Ops.insert(Ops.begin(), Tmp);
+    Instruction *UserI = cast<Instruction>(I->user_back());
+    if (I->getOpcode() == Instruction::Mul) {
+      if (UserI->getOpcode() == Instruction::Add &&
+          isa<ConstantInt>(Ops.back().Op) &&
+          cast<ConstantInt>(Ops.back().Op)->isMinusOne()) {
+        ValueEntry Tmp = Ops.pop_back_val();
+        Ops.insert(Ops.begin(), Tmp);
+      } else if ((I->hasNoUnsignedWrap() &&
+                  (UserI->getOpcode() == Instruction::UDiv ||
+                   UserI->getOpcode() == Instruction::URem)) ||
+                 (I->hasNoSignedWrap() &&
+                  (UserI->getOpcode() == Instruction::SDiv ||
+                   UserI->getOpcode() == Instruction::SRem))) {
+        if (isa<ConstantInt>(UserI->getOperand(1))) {
+          if (UserI->getOperand(1) == Ops.back().Op) {
+            ValueEntry Tmp = Ops.pop_back_val();
+            Ops.insert(Ops.begin(), Tmp);
+          }
+        } else {
+          for (auto it = Ops.begin(); it != Ops.end(); ++it) {
+            ValueEntry Tmp = *it;
+            if (UserI->getOperand(1) == Tmp.Op) {
+              Ops.erase(it);
+              Ops.insert(Ops.begin(), Tmp);
+              break;
+            }
+          }
+        }
+      }
     } else if (I->getOpcode() == Instruction::FMul &&
-               cast<Instruction>(I->user_back())->getOpcode() ==
-                   Instruction::FAdd &&
+               UserI->getOpcode() == Instruction::FAdd &&
                isa<ConstantFP>(Ops.back().Op) &&
                cast<ConstantFP>(Ops.back().Op)->isExactlyValue(-1.0)) {
+      ValueEntry Tmp = Ops.pop_back_val();
+      Ops.insert(Ops.begin(), Tmp);
+    } else if (I->getOpcode() == Instruction::Mul &&
+               cast<Instruction>(I->user_back())->getOpcode() ==
+                   Instruction::UDiv &&
+               isa<ConstantInt>(Ops.back().Op) &&
+               cast<Instruction>(I->user_back())->getOperand(1) ==
+                   Ops.back().Op) {
       ValueEntry Tmp = Ops.pop_back_val();
       Ops.insert(Ops.begin(), Tmp);
     }

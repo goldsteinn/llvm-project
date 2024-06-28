@@ -21,8 +21,8 @@ define i4 @nuw_preserve_non_zero(i4 %a, i4 %b, i4 %c) {
 ; CHECK-NEXT:    [[A0:%.*]] = add nuw i4 [[A]], 1
 ; CHECK-NEXT:    [[B0:%.*]] = add nuw i4 [[B]], 1
 ; CHECK-NEXT:    [[C0:%.*]] = add nuw i4 [[C]], 1
-; CHECK-NEXT:    [[V0:%.*]] = mul i4 [[B0]], [[A0]]
-; CHECK-NEXT:    [[V1:%.*]] = mul i4 [[V0]], [[C0]]
+; CHECK-NEXT:    [[V0:%.*]] = mul nuw i4 [[B0]], [[A0]]
+; CHECK-NEXT:    [[V1:%.*]] = mul nuw i4 [[V0]], [[C0]]
 ; CHECK-NEXT:    ret i4 [[V1]]
 ;
   %a0 = add nuw i4 %a, 1
