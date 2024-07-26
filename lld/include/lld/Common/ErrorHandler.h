@@ -109,7 +109,7 @@ public:
 
   void error(const Twine &msg);
   void error(const Twine &msg, ErrorTag tag, ArrayRef<StringRef> args);
-  [[noreturn]] void fatal(const Twine &msg);
+  [[noreturn]] void fatal(const Twine &msg) LLVM_ATTRIBUTE_COLD;
   void log(const Twine &msg);
   void message(const Twine &msg, llvm::raw_ostream &s);
   void warn(const Twine &msg);
@@ -146,13 +146,13 @@ ErrorHandler &errorHandler();
 
 void error(const Twine &msg);
 void error(const Twine &msg, ErrorTag tag, ArrayRef<StringRef> args);
-[[noreturn]] void fatal(const Twine &msg);
+[[noreturn]] void fatal(const Twine &msg) LLVM_ATTRIBUTE_COLD;
 void log(const Twine &msg);
 void message(const Twine &msg, llvm::raw_ostream &s = outs());
 void warn(const Twine &msg);
 uint64_t errorCount();
 
-[[noreturn]] void exitLld(int val);
+[[noreturn]] void exitLld(int val) LLVM_ATTRIBUTE_COLD;
 
 void diagnosticHandler(const llvm::DiagnosticInfo &di);
 void checkError(Error e);

@@ -263,7 +263,7 @@ private:
   // of debug prints can cause the function to be too large for inlining.  So
   // it's important that we define this function out of line so that it can't be
   // inlined.
-  [[noreturn]] void fatalUncheckedError() const;
+  [[noreturn]] LLVM_ATTRIBUTE_COLD void fatalUncheckedError() const;
 #endif
 
   void assertIsChecked() {
@@ -706,7 +706,7 @@ private:
   }
 
 #if LLVM_ENABLE_ABI_BREAKING_CHECKS
-  [[noreturn]] LLVM_ATTRIBUTE_NOINLINE void fatalUncheckedExpected() const {
+  [[noreturn]] LLVM_ATTRIBUTE_NOINLINE LLVM_ATTRIBUTE_COLD void fatalUncheckedExpected() const {
     dbgs() << "Expected<T> must be checked before access or destruction.\n";
     if (HasError) {
       dbgs() << "Unchecked Expected<T> contained error:\n";
@@ -738,7 +738,7 @@ private:
 
 /// Report a serious error, calling any installed error handler. See
 /// ErrorHandling.h.
-[[noreturn]] void report_fatal_error(Error Err, bool gen_crash_diag = true);
+[[noreturn]] void report_fatal_error(Error Err, bool gen_crash_diag = true) LLVM_ATTRIBUTE_COLD;
 
 /// Report a fatal error if Err is a failure value.
 ///

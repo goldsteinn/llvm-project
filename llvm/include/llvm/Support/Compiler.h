@@ -203,6 +203,19 @@
 #define LLVM_ATTRIBUTE_UNUSED
 #endif
 
+
+#if __has_attribute(cold)
+#define LLVM_ATTRIBUTE_COLD __attribute__((cold))
+#else
+#define LLVM_ATTRIBUTE_COLD
+#endif
+
+#if __has_attribute(noreturn)
+#define LLVM_ATTRIBUTE_NORETURN __attribute__((noreturn))
+#else
+#define LLVM_ATTRIBUTE_NORETURN
+#endif
+
 // FIXME: Provide this for PE/COFF targets.
 #if __has_attribute(weak) && !defined(__MINGW32__) && !defined(__CYGWIN__) &&  \
     !defined(_WIN32)

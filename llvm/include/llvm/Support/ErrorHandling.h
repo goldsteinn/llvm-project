@@ -69,11 +69,11 @@ namespace llvm {
 /// does not return.
 /// NOTE: The std::string variant was removed to avoid a <string> dependency.
 [[noreturn]] void report_fatal_error(const char *reason,
-                                     bool gen_crash_diag = true);
+                                     bool gen_crash_diag = true) LLVM_ATTRIBUTE_COLD;
 [[noreturn]] void report_fatal_error(StringRef reason,
-                                     bool gen_crash_diag = true);
+                                     bool gen_crash_diag = true) LLVM_ATTRIBUTE_COLD;
 [[noreturn]] void report_fatal_error(const Twine &reason,
-                                     bool gen_crash_diag = true);
+                                     bool gen_crash_diag = true) LLVM_ATTRIBUTE_COLD;
 
 /// Installs a new bad alloc error handler that should be used whenever a
 /// bad alloc error, e.g. failing malloc/calloc, is encountered by LLVM.
@@ -112,14 +112,14 @@ void install_out_of_memory_new_handler();
 /// if LLVM is compiled with exception support. Otherwise prints the error
 /// to standard error and calls abort().
 [[noreturn]] void report_bad_alloc_error(const char *Reason,
-                                         bool GenCrashDiag = true);
+                                         bool GenCrashDiag = true) LLVM_ATTRIBUTE_COLD;
 
 /// This function calls abort(), and prints the optional message to stderr.
 /// Use the llvm_unreachable macro (that adds location info), instead of
 /// calling this function directly.
 [[noreturn]] void
 llvm_unreachable_internal(const char *msg = nullptr, const char *file = nullptr,
-                          unsigned line = 0);
+                          unsigned line = 0) LLVM_ATTRIBUTE_COLD;
 }
 
 /// Marks that the current location is not supposed to be reachable.
