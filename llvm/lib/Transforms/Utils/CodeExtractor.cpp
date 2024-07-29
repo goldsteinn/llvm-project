@@ -664,6 +664,31 @@ void CodeExtractor::findInputsOutputs(ValueSet &Inputs, ValueSet &Outputs,
   }
 }
 
+void CodeExtractor::countInputsOutputs(unsigned &NumInputs,
+                                       unsigned &NumOutputs) const {
+  unsigned NumIn = 0;
+  unsigned NumOut = 0;
+  for (BasicBlock *BB : Blocks) {
+    // If a used value is defined outside the region, it's an input.  If an
+    // instruction is used outside the region, it's an output.
+    for (Instruction &II : *BB) {
+      for (auto &OI : II.operands()) {
+        Value *V = OI;
+        if (definedInCaller(Blocks, V))
+          ++NumIn;
+      }
+
+      for (User *U : II.users())
+        if (!definedInRegion(Blocks, U)) {
+          ++NumOut;
+          break;
+        }
+    }
+  }
+  NumInputs = NumIn;
+  NumOutputs = NumOut;
+}
+
 /// severSplitPHINodesOfEntry - If a PHI node has multiple inputs from outside
 /// of the region, we need to split the entry block of the region so that the
 /// PHI node is easier to deal with.

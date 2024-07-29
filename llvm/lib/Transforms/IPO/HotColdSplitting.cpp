@@ -395,17 +395,15 @@ bool HotColdSplitting::isSplittingBeneficial(CodeExtractor &CE,
 
   // Perform a simple cost/benefit analysis to decide whether or not to permit
   // splitting.
-  SetVector<Value *> Inputs, Outputs, Sinks;
-  CE.findInputsOutputs(Inputs, Outputs, Sinks);
+  unsigned NumInputs, NumOutputs;
+  CE.countInputsOutputs(NumInputs, NumOutputs);
   InstructionCost OutliningBenefit = getOutliningBenefit(Region, TTI);
-  int OutliningPenalty =
-      getOutliningPenalty(Region, Inputs.size(), Outputs.size());
+  if (!OutliningBenefit.isValid())
+    return false;
+  int OutliningPenalty = getOutliningPenalty(Region, NumInputs, NumOutputs);
   LLVM_DEBUG(dbgs() << "Split profitability: benefit = " << OutliningBenefit
                     << ", penalty = " << OutliningPenalty << "\n");
-  if (!OutliningBenefit.isValid() || OutliningBenefit <= OutliningPenalty)
-    return false;
-
-  return true;
+  return OutliningBenefit > OutliningPenalty;
 }
 
 // Split the single \p EntryPoint cold region. \p CE is the region code
@@ -639,13 +637,10 @@ public:
 
 bool HotColdSplitting::outlineColdRegions(Function &F, bool HasProfileSummary) {
   // The set of cold blocks outlined.
-  SmallPtrSet<BasicBlock *, 4> ColdBlocks;
-
-  // The set of cold blocks cannot be outlined.
-  SmallPtrSet<BasicBlock *, 4> CannotBeOutlinedColdBlocks;
+  SmallPtrSet<BasicBlock *, 8> ColdBlocks;
 
   // Set of cold blocks obtained with RPOT.
-  SmallPtrSet<BasicBlock *, 4> AnnotatedColdBlocks;
+  SmallPtrSet<BasicBlock *, 8> AnnotatedColdBlocks;
 
   // The worklist of non-intersecting regions left to outline. The first member
   // of the pair is the entry point into the region to be outlined.
@@ -680,10 +675,6 @@ bool HotColdSplitting::outlineColdRegions(Function &F, bool HasProfileSummary) {
   for (BasicBlock *BB : RPOT) {
     // This block is already part of some outlining region.
     if (ColdBlocks.count(BB))
-      continue;
-
-    // This block is already part of some region cannot be outlined.
-    if (CannotBeOutlinedColdBlocks.count(BB))
       continue;
 
     if (!isBasicBlockCold(BB, ColdProbThresh, AnnotatedColdBlocks, BFI))
@@ -745,12 +736,7 @@ bool HotColdSplitting::outlineColdRegions(Function &F, bool HasProfileSummary) {
               std::make_pair(SubRegion[0], std::move(CE)));
           ++OutlinedFunctionID;
         } else {
-          // The cold block region cannot be outlined.
-          for (auto *Block : SubRegion)
-            if ((DT->dominates(BB, Block) && PDT->dominates(Block, BB)) ||
-                (PDT->dominates(BB, Block) && DT->dominates(Block, BB)))
-              // Will skip this cold block in the loop to save the compile time
-              CannotBeOutlinedColdBlocks.insert(Block);
+          break;
         }
       } while (!Region.empty());
 
@@ -806,7 +792,6 @@ bool HotColdSplitting::run(Module &M) {
 PreservedAnalyses
 HotColdSplittingPass::run(Module &M, ModuleAnalysisManager &AM) {
   auto &FAM = AM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
-
   auto LookupAC = [&FAM](Function &F) -> AssumptionCache * {
     return FAM.getCachedResult<AssumptionAnalysis>(F);
   };

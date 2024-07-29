@@ -200,6 +200,9 @@ public:
     void findInputsOutputs(ValueSet &Inputs, ValueSet &Outputs,
                            const ValueSet &Allocas) const;
 
+    /// Same as `findInputOutputs` but only returns counts.
+    void countInputsOutputs(unsigned &NumInputs, unsigned &NumOutputs) const;
+
     /// Check if life time marker nodes can be hoisted/sunk into the outline
     /// region.
     ///
