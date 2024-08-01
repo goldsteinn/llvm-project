@@ -1823,8 +1823,8 @@ static void addColdAttrs(const SCCNodeSet &SCCNodes,
     if (allPathsGoThroughCold(*F)) {
       ++NumCold;
       Changed.insert(F);
-      F->addFnAttr(Attribute::NoSanitizeBounds);
-      //F->addFnAttr(Attribute::Cold);
+      //F->addFnAttr(Attribute::NoSanitizeBounds);
+      F->addFnAttr(Attribute::Cold);
       continue;
     }
   }
