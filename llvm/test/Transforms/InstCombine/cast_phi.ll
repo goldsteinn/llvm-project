@@ -322,7 +322,7 @@ define i8 @trunc_in_loop_exit_block() "instcombine-no-verify-fixpoint" {
 ; CHECK-NEXT:    [[IV_NEXT]] = add nuw nsw i32 [[IV]], 1
 ; CHECK-NEXT:    br label [[LOOP]]
 ; CHECK:       exit:
-; CHECK-NEXT:    [[TRUNC:%.*]] = trunc i32 [[PHI]] to i8
+; CHECK-NEXT:    [[TRUNC:%.*]] = trunc nuw i32 [[PHI]] to i8
 ; CHECK-NEXT:    ret i8 [[TRUNC]]
 ;
 entry:

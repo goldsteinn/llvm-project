@@ -8,29 +8,23 @@ define dso_local noundef i32 @main() {
 ; CHECK-LABEL: define dso_local noundef i32 @main() {
 ; CHECK-NEXT:  [[BB:.*]]:
 ; CHECK-NEXT:    [[ALLOCA:%.*]] = alloca [2 x ptr], align 16
-; CHECK-NEXT:    store ptr blockaddress(@main, %[[BB4:.*]]), ptr [[ALLOCA]], align 16, !tbaa [[TBAA0:![0-9]+]]
+; CHECK-NEXT:    store ptr blockaddress(@main, %[[BB1:.*]]), ptr [[ALLOCA]], align 16, !tbaa [[TBAA0:![0-9]+]]
 ; CHECK-NEXT:    [[GETELEMENTPTR:%.*]] = getelementptr inbounds [2 x ptr], ptr [[ALLOCA]], i64 0, i64 1
 ; CHECK-NEXT:    store ptr blockaddress(@main, %[[BB10:.*]]), ptr [[GETELEMENTPTR]], align 8, !tbaa [[TBAA0]]
-; CHECK-NEXT:    br label %[[BB1:.*]]
+; CHECK-NEXT:    br label %[[BB1]]
 ; CHECK:       [[BB1]]:
-; CHECK-NEXT:    [[PHI:%.*]] = phi i32 [ 0, %[[BB]] ], [ [[PHI8:%.*]], %[[BB7:.*]] ]
-; CHECK-NEXT:    [[PHI2:%.*]] = phi i32 [ 0, %[[BB]] ], [ [[PHI9:%.*]], %[[BB7]] ]
-; CHECK-NEXT:    switch i32 [[PHI]], label %[[BB7]] [
-; CHECK-NEXT:      i32 0, label %[[BB12:.*]]
-; CHECK-NEXT:      i32 1, label %[[BB4]]
+; CHECK-NEXT:    [[PHI:%.*]] = phi i32 [ 0, %[[BB]] ], [ 2, %[[BB12:.*]] ]
+; CHECK-NEXT:    [[PHI2:%.*]] = phi i32 [ 0, %[[BB]] ], [ [[PHI13:%.*]], %[[BB12]] ]
+; CHECK-NEXT:    switch i32 [[PHI]], label %[[BB1_UNREACHABLEDEFAULT:.*]] [
+; CHECK-NEXT:      i32 0, label %[[BB12]]
 ; CHECK-NEXT:      i32 2, label %[[BB6:.*]]
 ; CHECK-NEXT:    ]
-; CHECK:       [[BB4]]:
-; CHECK-NEXT:    [[PHI5:%.*]] = phi i32 [ [[PHI13:%.*]], %[[BB12]] ], [ [[PHI2]], %[[BB1]] ]
-; CHECK-NEXT:    br label %[[BB7]]
 ; CHECK:       [[BB6]]:
 ; CHECK-NEXT:    [[CALL:%.*]] = call i32 @foo(i32 noundef [[PHI2]])
 ; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[PHI2]], 1
 ; CHECK-NEXT:    br label %[[BB12]]
-; CHECK:       [[BB7]]:
-; CHECK-NEXT:    [[PHI8]] = phi i32 [ [[PHI]], %[[BB1]] ], [ 2, %[[BB4]] ]
-; CHECK-NEXT:    [[PHI9]] = phi i32 [ [[PHI2]], %[[BB1]] ], [ [[PHI5]], %[[BB4]] ]
-; CHECK-NEXT:    br label %[[BB1]], !llvm.loop [[LOOP4:![0-9]+]]
+; CHECK:       [[BB1_UNREACHABLEDEFAULT]]:
+; CHECK-NEXT:    unreachable
 ; CHECK:       [[BB10]]:
 ; CHECK-NEXT:    [[CALL11:%.*]] = call i32 @foo(i32 noundef [[PHI13]])
 ; CHECK-NEXT:    ret i32 0
@@ -39,7 +33,7 @@ define dso_local noundef i32 @main() {
 ; CHECK-NEXT:    [[SEXT:%.*]] = sext i32 [[PHI13]] to i64
 ; CHECK-NEXT:    [[GETELEMENTPTR14:%.*]] = getelementptr inbounds [2 x ptr], ptr [[ALLOCA]], i64 0, i64 [[SEXT]]
 ; CHECK-NEXT:    [[LOAD:%.*]] = load ptr, ptr [[GETELEMENTPTR14]], align 8, !tbaa [[TBAA0]]
-; CHECK-NEXT:    indirectbr ptr [[LOAD]], [label %[[BB4]], label %bb10]
+; CHECK-NEXT:    indirectbr ptr [[LOAD]], [label %[[BB1]], label %bb10], !llvm.loop [[LOOP4:![0-9]+]]
 ;
 bb:
   %alloca = alloca [2 x ptr], align 16
